@@ -44,6 +44,13 @@ class Settings(BaseSettings):
         "tauri://localhost",
     ]
 
+    #---SQL Server-----
+    sql_driver: str = "OBDC Driver 17 for SQL Server"
+
+    sql_login_timeout: int = 10
+
+    sql_trust_server_certificate: bool = True
+
     @property
     def logs_dir(self) -> Path:
         return self.data_dir / "logs"

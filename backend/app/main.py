@@ -11,7 +11,9 @@ import uvicorn
 from fastapi import APIRouter, Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.v1 import auth
 from app.core.config import get_settings
+from app.core.errors import AppError, app_error_handler
 from app.core.logging import setup_logging
 from app.core.security import verify_session_token
 
@@ -38,6 +40,10 @@ def create_app() -> FastAPI:
     def health() -> dict:
         return {"status": "ok", "version": settings.app_version}
 
+    @app.get("/",include_in_schema=False)
+    def root() -> dict:
+        return {"servicio": settings.app_name, "docs":"/docs","health":"/health"}
+
     # Todo lo que cuelga de /api/v1 exige el token de sesión.
     api_v1 = APIRouter(prefix="/api/v1", dependencies=[Depends(verify_session_token)])
 
@@ -47,6 +53,7 @@ def create_app() -> FastAPI:
         return {"pong": True}
 
     # Los routers de auth, invoices, etc. se registrarán aquí en fases siguientes.
+    api_v1.include_router(auth.router)
     app.include_router(api_v1)
 
     log.info("Backend iniciado (v%s)", settings.app_version)
