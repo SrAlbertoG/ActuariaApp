@@ -1,0 +1,5 @@
+[tool.pytest.ini_options]
+# Agrega la carpeta backend/ a la ruta de búsqueda de Python,
+# para que "from app.core.config import ..." funcione en las pruebas.
+pythonpath = ["."]
+testpaths = ["tests"]
