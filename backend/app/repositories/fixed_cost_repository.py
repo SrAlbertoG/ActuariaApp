@@ -81,6 +81,14 @@ def _parse_amount(value: object) -> Decimal | None:
             text = text.replace(",", "")
     elif "," in text:
         text = text.replace(",", ".")
+    elif text.count(".") > 1:
+        # Varios puntos sin coma suelen representar separadores de miles.
+        text = text.replace(".", "")
+    elif "." in text:
+        # Un único punto seguido de tres dígitos suele ser un separador de miles.
+        integer, decimal = text.split(".", maxsplit=1)
+        if len(decimal) == 3 and integer.lstrip("-").isdigit():
+            text = integer + decimal
 
     try:
         return Decimal(text)
@@ -185,7 +193,9 @@ class FixedCostRepository:
             frame = frame.loc[frame["nit_provider"] == provider_nit.strip()]
         if invoice:
             frame = frame.loc[
-                frame["invoice"].str.contains(invoice.strip(), case=False, na=False)
+                frame["invoice"].str.contains(
+                    invoice.strip(), case=False, na=False, regex=False
+                )
             ]
         if start_date:
             month_start = date(start_date.year, start_date.month, 1)
