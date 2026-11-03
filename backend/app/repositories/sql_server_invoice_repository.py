@@ -38,6 +38,7 @@ class SqlServerInvoiceRepository:
         contract: str | None = None,
         provider_nit: str | None = None,
         invoice: str | None = None,
+        invoice_exact: bool = False,
         start_date: date | None = None,
         end_date: date | None = None,
     ) -> tuple[str, tuple]:
@@ -51,8 +52,12 @@ class SqlServerInvoiceRepository:
             clauses.append("A.NITPrestador = ?")
             params.append(provider_nit.strip())
         if invoice:
-            clauses.append("A.NumeroFactura LIKE ?")
-            params.append(f"%{invoice.strip()}%")
+            if invoice_exact:
+                clauses.append("A.NumeroFactura = ?")
+                params.append(invoice.strip())
+            else:
+                clauses.append("A.NumeroFactura LIKE ?")
+                params.append(f"%{invoice.strip()}%")
         if start_date:
             clauses.append(f"{self.period_expression} >= ?")
             params.append(start_date)
@@ -120,6 +125,7 @@ class SqlServerInvoiceRepository:
             contract=contract,
             provider_nit=provider_nit,
             invoice=invoice,
+            invoice_exact=True,
         )
         return records[0] if records else None
 
