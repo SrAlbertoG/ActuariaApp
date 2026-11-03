@@ -50,7 +50,12 @@ class SqlServerInvoiceRepository:
         start_date: date | None = None,
         end_date: date | None = None,
     ) -> tuple[str, tuple]:
-        clauses = ["A.Con_Codigo IS NOT NULL", f"{self.period_expression} >= ?"]
+        clauses = [
+            "A.Con_Codigo IS NOT NULL",
+            "A.NITPrestador IS NOT NULL",
+            "A.NumeroFactura IS NOT NULL",
+            f"{self.period_expression} >= ?",
+        ]
         params: list[object] = [self.cutoff_date]
 
         if contract:
