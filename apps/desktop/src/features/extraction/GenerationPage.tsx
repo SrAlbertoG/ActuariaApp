@@ -343,19 +343,21 @@ export function GenerationPage() {
     });
 
     if (!checked) {
-      setSelectedTransactions((current) => {
-        const next = { ...current };
-        Object.keys(next).forEach((id) => {
-          if (
-            next[id].invoice === invoice.invoice &&
-            next[id].nit_provider === invoice.nit_provider &&
-            next[id].contract === invoice.contract
-          ) {
-            delete next[id];
-          }
+      const invoiceStillSelected = Object.values(selectedInvoices).some(
+        (selectedInvoice) =>
+          selectedInvoice.id !== invoice.id &&
+          selectedInvoice.invoice === invoice.invoice,
+      );
+
+      if (!invoiceStillSelected) {
+        setSelectedTransactions((current) => {
+          const next = { ...current };
+          Object.keys(next).forEach((id) => {
+            if (next[id].invoice === invoice.invoice) delete next[id];
+          });
+          return next;
         });
-        return next;
-      });
+      }
     }
 
     setTransactionPage(1);
@@ -385,21 +387,22 @@ export function GenerationPage() {
     });
 
     if (!checked) {
+      const visibleInvoiceIds = new Set(invoiceRows.map((invoice) => invoice.id));
+      const invoiceNumbersStillSelected = new Set(
+        Object.values(selectedInvoices)
+          .filter((invoice) => !visibleInvoiceIds.has(invoice.id))
+          .map((invoice) => invoice.invoice),
+      );
+      const invoiceNumbersToRemove = new Set(
+        invoiceRows
+          .map((invoice) => invoice.invoice)
+          .filter((number) => !invoiceNumbersStillSelected.has(number)),
+      );
+
       setSelectedTransactions((current) => {
         const next = { ...current };
-        const removed = new Set(
-          invoiceRows.map((invoice) =>
-            [invoice.invoice, invoice.nit_provider, invoice.contract].join("|"),
-          ),
-        );
         Object.keys(next).forEach((id) => {
-          const transaction = next[id];
-          const key = [
-            transaction.invoice,
-            transaction.nit_provider,
-            transaction.contract,
-          ].join("|");
-          if (removed.has(key)) delete next[id];
+          if (invoiceNumbersToRemove.has(next[id].invoice)) delete next[id];
         });
         return next;
       });
