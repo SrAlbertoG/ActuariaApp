@@ -25,7 +25,8 @@ export const extractionApi = {
     const params = new URLSearchParams();
     if (search && search.trim()) params.set("search", search.trim());
 
-    const suffix = params.size > 0 ? "?" + params.toString() : "";
+    const query = params.toString();
+    const suffix = query ? "?" + query : "";
     return apiFetch<CatalogItem[]>("/contracts" + suffix);
   },
 
