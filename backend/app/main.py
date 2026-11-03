@@ -34,6 +34,8 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    app.add_exception_handler(AppError,app_error_handler)
+
     # /health es público: Tauri lo consulta para saber si el backend ya
     # arrancó. No devuelve ningún dato sensible.
     @app.get("/health", tags=["sistema"])

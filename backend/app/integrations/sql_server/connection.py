@@ -8,6 +8,7 @@ from app.core.errors import AppError
 from app.models.connection import AuthType, ConnectionParams
 
 log = logging.getLogger(__name__)
+_SQL_CODE = re.compile(r"\((\d{3,5})\)")
 
 def resolve_driver(preferred: str) -> str:
 
@@ -53,31 +54,48 @@ def build_connection_string(params: ConnectionParams, driver: str) -> str:
 
     return ";".join(parts) + ";"
 
-def classify_error(exc: pyodbc.Error) -> AppError:
+def classify_error(exc: pyodbc.Error, auth_type: AuthType = AuthType.SQL) -> AppError:
 
     sqlstate = str(exc.args[0]) if exc.args else ""
     detail = str(exc.args[1]) if len(exc.args) > 1 else ""
-    log.warning("Fallo de conexion a SQL Server (SQLSTATE=%s)", sqlstate)
+    match = _SQL_CODE.search(detail)
+    sql_code = match.group(1) if match else None
+    log.warning("Fallo de conexion a SQL Server (SQLSTATE=%s, codigo=%s, auth=%s)", sqlstate, sql_code, auth_type.value,)
 
     if sqlstate == "IM002":
         return AppError("driver_missing","No se encontro el driver ODBC de SQL Server.", 500)
 
-    if "4060" in detail:
+    if sql_code == "4060":
         return AppError(
             "permission_error",
-            "El usuario no tiene permisos sobre la base de datos indicada.",
+            "La cuenta no tiene permisos sobre la base de datos indicada.",
             403,
         )
 
-    if "18456" in detail or sqlstate == "28000":
-        return AppError("invalid_credentials", "Usuario o contraseña.",401)
+    if auth_type == AuthType.WINDOWS:
+
+        rejected = (
+            sql_code in {"18452","18456"}
+            or sqlstate == "28000"
+            or "sspi" in detail.lower()
+            or "untrusted" in detail.lower()
+        )
+
+        if rejected:
+            return AppError(
+                "windows_auth_failed",
+                "El servidor rechazo tu cuenta de Windows. Verifica que estes en la red o VPN de la organizacion y que tu cuenta tenga acceso a este servidor; si no, ingresa con usuario y contraseña de SQL Server",
+                401,
+            )
+    elif sql_code == "18456" or sqlstate == "28000":
+        return AppError("invalid_credentials", "Usuario o contraseña incorrectos.",401)
     if sqlstate in {"08001","08S01","HYT00"} or "timeout" in detail.lower():
         return AppError(
             "server_unavailable",
-            "No se pudo conectar al servidor. Verifica el nombre, la red o la VPN.",
+            "No se pudo contactar el servidor. Verifica el nombre, la red o la VPN.",
             503,
         )
-    return AppError("connection_error","No fue posible establecer la conexión",500)
+    return AppError("connection_error","No fue posible establecer la conexion.",500)
 
 def open_connection(params: ConnectionParams) -> pyodbc.Connection:
     settings = get_settings()
@@ -91,5 +109,5 @@ def open_connection(params: ConnectionParams) -> pyodbc.Connection:
         conn.cursor().execute("SELECT 1").fetchone()
         return conn
     except pyodbc.Error as exc: 
-        raise classify_error(exc) from None
+        raise classify_error(exc, params.auth_type) from None
     

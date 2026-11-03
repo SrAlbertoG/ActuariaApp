@@ -5,6 +5,9 @@ from fastapi import APIRouter, Depends
 from app.schemas.auth import LoginRequest, SessionStatus
 from app.services.auth_service import AuthService, get_auth_service
 
+from app.core.windows_identity import get_windows_identity
+from app.schemas.auth import LoginRequest, SessionStatus, WindowsInfo
+
 router = APIRouter(prefix="/auth/sql-server", tags=["autenticación"])
 
 
@@ -47,3 +50,9 @@ def logout(svc: AuthService = Depends(get_auth_service)):
     """Cierra la sesión actual."""
     svc.logout()
     return svc.status()
+
+@router.get("/windows-info", response_model=WindowsInfo)
+def windows_info():
+    """Cuenta de Windows que se usaria y si el equipo parece estar en un dominio"""
+    
+    return get_windows_identity()

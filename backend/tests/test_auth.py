@@ -1,15 +1,24 @@
 import logging
 
 import pytest 
-
+import pyodbc
 from fastapi.testclient import TestClient
-
+from app.core.windows_identity import get_windows_identity
+from app.models.connection import AuthType
 from app.core import credential_store
 from app.core.config import get_settings
 from app.core.errors import AppError
 from app.integrations.sql_server import connection as sql
 from app.main import app
 from app.services.auth_service import AuthService, get_auth_service
+
+def _driver_error(state: str, text: str) -> pyodbc.Error:
+    return pyodbc.Error(state, text)
+
+LOGIN_FAILED = (
+    "[28000] [Microsoft][ODBC Driver 17 for SQL Server][SQL Server]"
+    "Login failed for user 'X'. (18456) (SQLDriverConnect)"
+)
 
 PASSWORD = "S3cr3t!;}" #Incluye caracteres problematicos }; aproposito
 BODY = {
@@ -151,3 +160,47 @@ def test_cadena_de_conexion_escapa_la_contrasena():
     params = ConnectionParams("srv", "db", AuthType.SQL, "usr", "a;b}c")
     cs = sql.build_connection_string(params, "ODBC Driver 17 for SQL Server")
     assert "PWD={a;b}}c};" in cs
+
+def test_rechazo_con_sql_dice_usuario_o_contrasena():
+    err = sql.classify_error(_driver_error("28000", LOGIN_FAILED), AuthType.SQL)
+    assert err.code == "invalid_credentials"
+
+
+def test_rechazo_con_windows_no_dice_usuario_o_contrasena():
+    err = sql.classify_error(_driver_error("28000", LOGIN_FAILED), AuthType.WINDOWS)
+    assert err.code == "windows_auth_failed"
+
+
+def test_windows_dominio_no_confiable_y_sspi():
+    untrusted = "[28000] ...Login failed. The login is from an untrusted domain. (18452)"
+    sspi = "[HY000] ...Cannot generate SSPI context"
+    for text in (untrusted, sspi):
+        err = sql.classify_error(_driver_error("28000", text), AuthType.WINDOWS)
+        assert err.code == "windows_auth_failed"
+
+
+def test_windows_sin_driver_o_sin_servidor_no_se_confunde():
+    assert sql.classify_error(_driver_error("IM002", "x"), AuthType.WINDOWS).code == "driver_missing"
+    timeout = "[HYT00] Login timeout expired (0) (SQLDriverConnect)"
+    assert sql.classify_error(_driver_error("HYT00", timeout), AuthType.WINDOWS).code == "server_unavailable"
+
+
+def test_identidad_windows_equipo_con_dominio():
+    env = {"USERNAME": "analista", "USERDOMAIN": "COMFENALCO", "COMPUTERNAME": "PC-01"}
+    info = get_windows_identity(env, "win32")
+    assert info["domain_joined"] is True
+    assert info["account"] == "COMFENALCO\\analista"
+    assert info["message"] is None
+
+
+def test_identidad_windows_equipo_local_avisa():
+    env = {"USERNAME": "analista", "USERDOMAIN": "PC-01", "COMPUTERNAME": "PC-01"}
+    info = get_windows_identity(env, "win32")
+    assert info["domain_joined"] is False
+    assert info["message"]
+
+
+def test_endpoint_windows_info(client):
+    r = client.get(url("windows-info"), headers=HEADERS)
+    assert r.status_code == 200
+    assert {"available", "account", "domain_joined"} <= set(r.json())

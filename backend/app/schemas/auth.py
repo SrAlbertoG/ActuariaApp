@@ -56,3 +56,11 @@ class SessionStatus(BaseModel):
     auth_type: AuthType | None = None
     has_saved_credentials: bool = False
     saved_profile: SavedProfile | None = None
+
+class WindowsInfo(BaseModel):
+    """Cuenta de windows que se usuario con autentificacion integrada"""
+
+    available : bool
+    account : str | None = None
+    domain_joined : bool = False
+    message: str | None = None
