@@ -26,18 +26,13 @@ class SqlServerTransactionRepository:
 
         expressions: list[str] = []
         params: list[str] = []
-
         for item in invoice_keys:
             expressions.append(
                 "(rat_NumeroFactura = ? AND rat_NumeroIdentificacion = ? "
                 "AND rat_NumeroContrato = ?)"
             )
             params.extend(
-                [
-                    item["invoice"],
-                    item["nit_provider"],
-                    item["contract"],
-                ]
+                [item["invoice"], item["nit_provider"], item["contract"]]
             )
 
         return "(" + " OR ".join(expressions) + ")", tuple(params)
@@ -81,11 +76,7 @@ class SqlServerTransactionRepository:
                 CAST(FechaRadicacionFactura AS date) AS filing_date
             FROM {self.TABLE}
             WHERE rat_Activo = 'Activo' AND {invoice_filter}
-            ORDER BY rat_Id DESC
+            ORDER BY id DESC
             OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
         """
-        return self._fetch_all(
-            connection,
-            query,
-            (*params, offset, limit),
-        )
+        return self._fetch_all(connection, query, (*params, offset, limit))
