@@ -9,6 +9,7 @@ para que cada instalación local pueda utilizar una ubicación distinta.
 from datetime import date
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -58,7 +59,7 @@ class Settings(BaseSettings):
 
     # En FPR se filtra por FechaFactura por defecto. El área puede cambiarlo
     # a FechaRadicacion mediante ACTUARIA_FPR_PERIOD_FIELD.
-    fpr_period_field: str = "FechaFactura"
+    fpr_period_field: Literal["FechaFactura", "FechaRadicacion"] = "FechaFactura"
 
     @property
     def logs_dir(self) -> Path:
