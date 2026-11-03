@@ -19,6 +19,7 @@ const EMPTY_FILTERS: InvoiceFilters = {
 };
 
 const MAX_SELECTED_INVOICES = 250;
+const MAX_SELECTED_TRANSACTIONS = 1000;
 
 const inputClass =
   "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100";
@@ -419,8 +420,16 @@ export function GenerationPage() {
   ) => {
     setSelectedTransactions((current) => {
       const next = { ...current };
-      if (checked) next[transaction.id] = transaction;
-      else delete next[transaction.id];
+      if (checked) {
+        if (
+          Object.keys(next).length < MAX_SELECTED_TRANSACTIONS ||
+          next[transaction.id]
+        ) {
+          next[transaction.id] = transaction;
+        }
+      } else {
+        delete next[transaction.id];
+      }
       return next;
     });
     setPrepared(null);
@@ -431,8 +440,16 @@ export function GenerationPage() {
     setSelectedTransactions((current) => {
       const next = { ...current };
       transactionRows.forEach((transaction) => {
-        if (checked) next[transaction.id] = transaction;
-        else delete next[transaction.id];
+        if (checked) {
+          if (
+            Object.keys(next).length < MAX_SELECTED_TRANSACTIONS ||
+            next[transaction.id]
+          ) {
+            next[transaction.id] = transaction;
+          }
+        } else {
+          delete next[transaction.id];
+        }
       });
       return next;
     });
@@ -772,6 +789,12 @@ export function GenerationPage() {
               {selectedTransactionIds.length} transacciones seleccionadas
             </span>
           </div>
+
+          {selectedTransactionIds.length >= MAX_SELECTED_TRANSACTIONS && (
+            <p className="border-b border-amber-100 bg-amber-50 px-5 py-2 text-xs text-amber-800">
+              Has alcanzado el máximo de {MAX_SELECTED_TRANSACTIONS} transacciones por preparación.
+            </p>
+          )}
 
           {selectedInvoiceCount === 0 ? (
             <p className="px-5 py-12 text-center text-sm text-slate-500">
