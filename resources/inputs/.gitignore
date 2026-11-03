@@ -1,0 +1,5 @@
+# Los archivos de facturación son información institucional y no deben versionarse.
+*.xlsx
+*.xls
+*.csv
+*.xlsm
