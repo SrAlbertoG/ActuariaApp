@@ -2,54 +2,63 @@
 Configuración central del backend.
 
 Todos los valores se pueden sobrescribir con variables de entorno que
-empiecen por ``ACTUARIA_`` (por ejemplo ``ACTUARIA_PORT=9000``). Tauri
-usará este mecanismo para entregar al backend el puerto y el token de sesión.
-
-IMPORTANTE (seguridad): aquí NO se guardan contraseñas de SQL Server.
-Las credenciales viven únicamente en el almacén seguro de Windows.
+empiecen por ACTUARIA_. Las rutas de los archivos de entrada son configurables
+para que cada instalación local pueda utilizar una ubicación distinta.
 """
 
+from datetime import date
 from functools import lru_cache
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+
+# La raíz se resuelve desde el código y no desde el directorio de trabajo
+# actual, que puede variar al ejecutar FastAPI desde Tauri o PyInstaller.
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+
+
 class Settings(BaseSettings):
-    """PARAMETROS DE EJECUCION DE LA APLICACION"""
+    """Parámetros de ejecución de la aplicación."""
 
     model_config = SettingsConfigDict(env_prefix="ACTUARIA_")
-
-    #Nombre y version, utilies para logs y endpoint /health.
 
     app_name: str = "ActuariaApp"
     app_version: str = "0.1.0"
 
-    #El backend solo escucha en Loopback (segun requisito de seguridad #1)
-    #Se define como constante de configuracion y no se expone el usuario
+    # El backend solo escucha en loopback.
     host: str = "127.0.0.1"
     port: int = 8765
 
-    # Token compartido entre Tauri y FastAPI (requisito de seguridad #3).
-    # En producción Tauri genera uno aleatorio por sesión; el valor por
-    # defecto es SOLO para desarrollo.
+    # Token compartido entre Tauri y FastAPI. El valor por defecto es solo
+    # para desarrollo; Tauri debe generar uno aleatorio en producción.
     api_token: str = "dev-token-cambiar"
 
-    # Directorio de trabajo: SQLite, temporales y exportaciones.
+    # Directorio local de metadatos, temporales y exportaciones.
     data_dir: Path = Path.home() / "ActuariaApp"
 
-    # Orígenes permitidos para CORS (Vite en desarrollo y Tauri en Windows).
     allowed_origins: list[str] = [
         "http://localhost:1420",
         "http://tauri.localhost",
         "tauri://localhost",
     ]
 
-    #---SQL Server-----
-    sql_driver: str = "OBDC Driver 17 for SQL Server"
-
+    # Configuración SQL Server.
+    sql_driver: str = "ODBC Driver 17 for SQL Server"
     sql_login_timeout: int = 10
-
     sql_trust_server_certificate: bool = True
+
+    # Configuración de fuentes de facturación.
+    # Por defecto, el Excel se espera dentro de resources/inputs.
+    # Se puede cambiar sin modificar código con ACTUARIA_FIXED_COSTS_FILE.
+    fixed_costs_file: Path = (
+        PROJECT_ROOT / "resources" / "inputs" / "BaseMontosFijos2026.xlsx"
+    )
+    invoice_source_cutoff: date = date(2026, 9, 1)
+
+    # En FPR se filtra por FechaFactura por defecto. El área puede cambiarlo
+    # a FechaRadicacion mediante ACTUARIA_FPR_PERIOD_FIELD.
+    fpr_period_field: str = "FechaFactura"
 
     @property
     def logs_dir(self) -> Path:
