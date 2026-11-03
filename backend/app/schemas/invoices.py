@@ -2,6 +2,7 @@
 
 from datetime import date, datetime
 from decimal import Decimal
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -78,7 +79,7 @@ class ExtractionPreparationRequest(BaseModel):
 class ExtractionPreparationRead(BaseModel):
     """Resumen validado que consumirá el flujo de extracción del entregable 3."""
 
-    status: str = "prepared"
+    status: Literal["prepared"] = "prepared"
     prepared_at: datetime
     invoice_ids: list[str]
     transaction_ids: list[str]
