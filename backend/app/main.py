@@ -11,7 +11,7 @@ import uvicorn
 from fastapi import APIRouter, Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1 import auth, invoices, transactions
+from app.api.v1 import auth, extraction, invoices, transactions
 from app.core.config import get_settings
 from app.core.errors import AppError, app_error_handler
 from app.core.logging import setup_logging
@@ -58,6 +58,7 @@ def create_app() -> FastAPI:
     api_v1.include_router(auth.router)
     api_v1.include_router(invoices.router)
     api_v1.include_router(transactions.router)
+    api_v1.include_router(extraction.router)
     app.include_router(api_v1)
 
     log.info("Backend iniciado (v%s)", settings.app_version)
