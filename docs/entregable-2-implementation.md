@@ -58,6 +58,7 @@ de sesión y la dependencia de conexión SQL Server activa.
 | GET | /invoices/{invoice_id}/transactions | Transacciones de una factura |
 | GET | /transactions | Transacciones de una selección pequeña |
 | POST | /transactions/search | Consulta paginada de transacciones de una selección múltiple |
+| POST | /extraction/prepare | Valida y confirma la selección sin ejecutar extracción |
 
 Filtros de /invoices: contract, provider_nit, invoice, start_date,
 end_date, page y page_size.
@@ -87,6 +88,8 @@ backend; los campos temporales se validan con una lista permitida.
 - services/invoice_service.py: reglas de fuentes, corte, combinación y
   paginación.
 - services/transaction_service.py: validación de selección y búsqueda RIPS.
+- services/contract_service.py y services/provider_service.py: catálogos independientes.
+- services/extraction_preparation_service.py: validación de selección activa para el siguiente entregable.
 - services/invoice_identifiers.py: identificadores transportables para la UI.
 - schemas/invoices.py: contratos Pydantic.
 - api/v1/invoices.py y api/v1/transactions.py: endpoints FastAPI.
@@ -94,6 +97,11 @@ backend; los campos temporales se validan con una lista permitida.
 
 El servicio utiliza AuthService.connection() para abrir y cerrar una conexión
 por operación. No persiste conexiones ni credenciales adicionales.
+
+El endpoint /extraction/prepare valida que los IDs de transacción seleccionados
+continúen activos y correspondan a los números de factura enviados. Devuelve un
+resumen validado (fecha, conteos, contratos y NIT de RIPS); no crea una ejecución
+ni consulta todavía las cuatro tablas de detalle.
 
 ## Pruebas
 
