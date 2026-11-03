@@ -80,7 +80,10 @@ def _parse_amount(value: object) -> Decimal | None:
         else:
             text = text.replace(",", "")
     elif "," in text:
-        text = text.replace(",", ".")
+        if re.fullmatch(r"-?\d{1,3}(,\d{3})+", text):
+            text = text.replace(",", "")
+        else:
+            text = text.replace(",", ".")
     elif text.count(".") > 1:
         # Varios puntos sin coma suelen representar separadores de miles.
         text = text.replace(".", "")
