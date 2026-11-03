@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends, Query
 
 from app.api.deps import require_sql_connection
-from app.schemas.invoices import TransactionPage
+from app.schemas.invoices import TransactionPage, TransactionSearchRequest
 from app.services.auth_service import AuthService
 from app.services.transaction_service import TransactionService
 
@@ -18,6 +18,19 @@ def get_transaction_service(
     return TransactionService(auth_service)
 
 
+@router.post("/transactions/search", response_model=TransactionPage)
+def search_transactions(
+    body: TransactionSearchRequest,
+    service: TransactionService = Depends(get_transaction_service),
+):
+    """Consulta paginada de transacciones con un cuerpo JSON de tamaño acotado."""
+    return service.search(
+        body.invoice_ids,
+        page=body.page,
+        page_size=body.page_size,
+    )
+
+
 @router.get("/transactions", response_model=TransactionPage)
 def list_transactions(
     invoice_ids: list[str] = Query(default=[]),
@@ -25,7 +38,7 @@ def list_transactions(
     page_size: int = Query(default=25, ge=1, le=100),
     service: TransactionService = Depends(get_transaction_service),
 ):
-    """Consulta transacciones activas de una selección de facturas."""
+    """Consulta transacciones activas; útil para selecciones pequeñas."""
     return service.search(invoice_ids, page=page, page_size=page_size)
 
 
