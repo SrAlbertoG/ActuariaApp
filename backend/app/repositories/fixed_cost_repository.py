@@ -146,7 +146,8 @@ def _read_cached_file(path_text: str, modified_ns: int) -> pd.DataFrame:
         & frame["service_month"].notna()
     ]
     frame = frame.drop_duplicates(
-        subset=["nit_provider", "contract", "invoice", "service_month"]
+        subset=["nit_provider", "contract", "invoice"],
+        keep="first",
     )
 
     return frame.reset_index(drop=True)
