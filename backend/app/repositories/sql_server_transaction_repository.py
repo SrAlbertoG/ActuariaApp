@@ -1,0 +1,91 @@
+"""Consultas parametrizadas para transacciones RIPS activas."""
+
+from app.core.errors import AppError
+
+
+class SqlServerTransactionRepository:
+    """Consulta RIPSArchivoTransaccion a partir de facturas seleccionadas."""
+
+    TABLE = "dbo.RIPSArchivoTransaccion"
+
+    @staticmethod
+    def _build_filter(invoice_keys: list[dict]) -> tuple[str, tuple]:
+        if not invoice_keys:
+            raise AppError(
+                "invoice_selection_required",
+                "Selecciona al menos una factura para consultar sus transacciones.",
+                400,
+            )
+
+        if len(invoice_keys) > 250:
+            raise AppError(
+                "too_many_invoices",
+                "Selecciona máximo 250 facturas por consulta de transacciones.",
+                400,
+            )
+
+        expressions: list[str] = []
+        params: list[str] = []
+
+        for item in invoice_keys:
+            expressions.append(
+                "(rat_NumeroFactura = ? AND rat_NumeroIdentificacion = ? "
+                "AND rat_NumeroContrato = ?)"
+            )
+            params.extend(
+                [
+                    item["invoice"],
+                    item["nit_provider"],
+                    item["contract"],
+                ]
+            )
+
+        return "(" + " OR ".join(expressions) + ")", tuple(params)
+
+    @staticmethod
+    def _fetch_all(connection, query: str, params: tuple) -> list[dict]:
+        cursor = connection.cursor()
+        try:
+            cursor.execute(query, params)
+            columns = [column[0] for column in cursor.description]
+            return [dict(zip(columns, row)) for row in cursor.fetchall()]
+        finally:
+            cursor.close()
+
+    def count(self, connection, invoice_keys: list[dict]) -> int:
+        invoice_filter, params = self._build_filter(invoice_keys)
+        query = f"""
+            SELECT COUNT(DISTINCT rat_Id) AS total
+            FROM {self.TABLE}
+            WHERE rat_Activo = 'Activo' AND {invoice_filter}
+        """
+        rows = self._fetch_all(connection, query, params)
+        return int(rows[0]["total"]) if rows else 0
+
+    def search(
+        self,
+        connection,
+        invoice_keys: list[dict],
+        offset: int,
+        limit: int,
+    ) -> list[dict]:
+        invoice_filter, params = self._build_filter(invoice_keys)
+        query = f"""
+            SELECT DISTINCT
+                CONVERT(varchar(100), rat_Id) AS id,
+                CONVERT(varchar(100), rat_NumeroFactura) AS invoice,
+                CONVERT(varchar(100), rat_NumeroContrato) AS contract,
+                CONVERT(varchar(50), rat_NumeroIdentificacion) AS nit_provider,
+                CONVERT(varchar(50), rat_CodigoPrestador) AS provider_code,
+                CAST(FechaCargueRips AS date) AS rips_date,
+                CAST(FechaRadicacionFactura AS date) AS filing_date
+            FROM {self.TABLE}
+            WHERE rat_Activo = 'Activo' AND {invoice_filter}
+            ORDER BY rat_Id DESC
+            OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
+        """
+        return self._fetch_all(
+            connection,
+            query,
+            (*params, offset, limit),
+        )
