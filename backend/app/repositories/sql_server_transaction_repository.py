@@ -1,5 +1,7 @@
 """Consultas parametrizadas para transacciones RIPS activas."""
 
+import pyodbc
+
 from app.core.errors import AppError
 
 
@@ -40,6 +42,12 @@ class SqlServerTransactionRepository:
             cursor.execute(query, params)
             columns = [column[0] for column in cursor.description]
             return [dict(zip(columns, row)) for row in cursor.fetchall()]
+        except pyodbc.Error:
+            raise AppError(
+                "transaction_query_failed",
+                "No fue posible consultar las transacciones RIPS en SQL Server. Verifica los permisos de lectura.",
+                503,
+            ) from None
         finally:
             cursor.close()
 
@@ -63,7 +71,7 @@ class SqlServerTransactionRepository:
         invoice_filter, params = self._build_filter(invoice_keys)
         query = f"""
             SELECT DISTINCT
-                CONVERT(varchar(100), rat_Id) AS id,
+                rat_Id AS id,
                 CONVERT(varchar(100), rat_NumeroFactura) AS invoice,
                 CONVERT(varchar(100), rat_NumeroContrato) AS contract,
                 CONVERT(varchar(50), rat_NumeroIdentificacion) AS nit_provider,
