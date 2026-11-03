@@ -6,7 +6,7 @@ from app.core.config import get_settings
 from app.core.errors import AppError
 from app.repositories.fixed_cost_repository import FixedCostRepository
 from app.repositories.sql_server_invoice_repository import SqlServerInvoiceRepository
-from app.schemas.invoices import CatalogItem, InvoicePage, InvoiceRead
+from app.schemas.invoices import InvoicePage, InvoiceRead
 from app.services.invoice_identifiers import decode_invoice_id, encode_invoice_id
 
 
@@ -22,52 +22,6 @@ class InvoiceService:
             settings.fpr_period_field,
             self.cutoff_date,
         )
-
-    def list_contracts(self, search: str | None = None) -> list[CatalogItem]:
-        with self.auth_service.connection() as connection:
-            values = set(self.sql_repository.list_contracts(connection, search))
-            try:
-                values.update(self.fixed_repository.list_contracts(search))
-            except AppError as exc:
-                if exc.code != "fixed_cost_file_missing":
-                    raise
-
-        return [
-            CatalogItem(value=value, label=value)
-            for value in sorted(values, key=str.casefold)
-        ]
-
-    def list_providers(
-        self,
-        contract: str | None = None,
-        search: str | None = None,
-    ) -> list[CatalogItem]:
-        with self.auth_service.connection() as connection:
-            records = self.sql_repository.list_providers(
-                connection,
-                contract=contract,
-                search=search,
-            )
-
-        providers: dict[str, str] = {
-            item["value"]: item.get("label") or item["value"]
-            for item in records
-            if item.get("value")
-        }
-
-        try:
-            for nit in self.fixed_repository.list_providers(contract):
-                if search and search.strip().casefold() not in nit.casefold():
-                    continue
-                providers.setdefault(nit, f"NIT {nit}")
-        except AppError as exc:
-            if exc.code != "fixed_cost_file_missing":
-                raise
-
-        return [
-            CatalogItem(value=value, label=providers[value])
-            for value in sorted(providers, key=str.casefold)
-        ]
 
     def search(
         self,
