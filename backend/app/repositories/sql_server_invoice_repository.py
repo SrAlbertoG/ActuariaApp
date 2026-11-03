@@ -119,7 +119,7 @@ class SqlServerInvoiceRepository:
                 ORDER BY B.FechaLiquidacion DESC, B.IdLiquidacion DESC
             ) AS LIQ
             WHERE {where}
-            ORDER BY period_reference DESC, invoice ASC
+            ORDER BY period_reference DESC, invoice ASC, A.fpr_Id DESC
             OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
         """
         return self._fetch_all(connection, query, (*params, offset, limit))
