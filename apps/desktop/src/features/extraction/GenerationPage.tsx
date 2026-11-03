@@ -232,13 +232,6 @@ export function GenerationPage() {
     queryFn: () => extractionApi.getContracts(),
   });
 
-  const providers = useQuery({
-    queryKey: ["invoice-providers", filters.contract],
-    queryFn: () =>
-      extractionApi.getProviders(filters.contract || undefined),
-    enabled: Boolean(filters.contract),
-  });
-
   const invoices = useQuery({
     queryKey: ["invoices", appliedFilters, invoicePage],
     queryFn: () => extractionApi.searchInvoices(appliedFilters, invoicePage),
@@ -512,28 +505,18 @@ export function GenerationPage() {
 
               <div>
                 <label className={labelClass} htmlFor="provider">
-                  Prestador / NIT
+                  NIT del prestador
                 </label>
-                <select
+                <input
                   id="provider"
+                  inputMode="numeric"
                   className={inputClass}
+                  placeholder="Ej. 900123456"
                   value={filters.provider_nit}
                   onChange={(event) =>
                     handleFilterChange("provider_nit", event.target.value)
                   }
-                  disabled={!filters.contract || providers.isPending}
-                >
-                  <option value="">
-                    {filters.contract
-                      ? "Todos los prestadores"
-                      : "Selecciona primero un contrato"}
-                  </option>
-                  {providers.data?.map((item) => (
-                    <option key={item.value} value={item.value}>
-                      {item.label}
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
 
               <div>
