@@ -61,6 +61,47 @@ class SqlServerTransactionRepository:
         rows = self._fetch_all(connection, query, params)
         return int(rows[0]["total"]) if rows else 0
 
+    def validate_selection(
+        self,
+        connection,
+        invoice_keys: list[dict],
+        transaction_ids: list[str],
+    ) -> list[dict]:
+        """Valida que los IDs elegidos sigan activos y pertenezcan a las facturas."""
+        if not transaction_ids:
+            raise AppError(
+                "transaction_selection_required",
+                "Selecciona al menos una transacción para preparar la extracción.",
+                400,
+            )
+        if len(transaction_ids) > 1000:
+            raise AppError(
+                "too_many_transactions",
+                "Selecciona máximo 1000 transacciones por preparación.",
+                400,
+            )
+
+        invoice_filter, invoice_params = self._build_filter(invoice_keys)
+        unique_ids = list(dict.fromkeys(transaction_ids))
+        id_placeholders = ", ".join("?" for _ in unique_ids)
+        query = f"""
+            SELECT DISTINCT
+                CONVERT(varchar(100), rat_Id) AS id,
+                CONVERT(varchar(100), rat_NumeroFactura) AS invoice,
+                CONVERT(varchar(100), rat_NumeroContrato) AS contract,
+                CONVERT(varchar(50), rat_NumeroIdentificacion) AS nit_provider
+            FROM {self.TABLE}
+            WHERE rat_Activo = 'Activo'
+                AND {invoice_filter}
+                AND rat_Id IN ({id_placeholders})
+            ORDER BY id
+        """
+        return self._fetch_all(
+            connection,
+            query,
+            (*invoice_params, *unique_ids),
+        )
+
     def search(
         self,
         connection,
