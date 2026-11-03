@@ -5,6 +5,7 @@ import type {
   InvoiceFilters,
   InvoicePage,
   TransactionPage,
+  PreparedSelection,
 } from "./types";
 
 export const PAGE_SIZE = 25;
@@ -62,6 +63,19 @@ export const extractionApi = {
         invoice_ids: invoiceIds,
         page,
         page_size: PAGE_SIZE,
+      }),
+    });
+  },
+
+  prepareSelection(
+    invoiceIds: string[],
+    transactionIds: string[],
+  ): Promise<PreparedSelection> {
+    return apiFetch<PreparedSelection>("/extraction/prepare", {
+      method: "POST",
+      body: JSON.stringify({
+        invoice_ids: invoiceIds,
+        transaction_ids: transactionIds,
       }),
     });
   },
