@@ -67,6 +67,12 @@ para selecciones múltiples y evita colocar cientos de identificadores en la URL
 La selección admite hasta 250 facturas por consulta y cada página devuelve
 hasta 100 transacciones.
 
+La búsqueda de transacciones conserva la regla del proceso anterior: utiliza
+el número completo de factura como criterio de asociación. NIT y contrato se
+devuelven desde RIPSArchivoTransaccion como atributos del registro. No se
+aplican como filtros adicionales porque la etapa posterior de validación puede
+corregir contratos y el filtro estricto podría excluir transacciones existentes.
+
 Las consultas a SQL Server usan parámetros ODBC (?). Los únicos fragmentos
 dinámicos de SQL corresponden a tablas y expresiones de fecha definidas en el
 backend; los campos temporales se validan con una lista permitida.
