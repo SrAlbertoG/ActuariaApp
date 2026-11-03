@@ -24,18 +24,14 @@ class SqlServerTransactionRepository:
                 400,
             )
 
-        expressions: list[str] = []
-        params: list[str] = []
-        for item in invoice_keys:
-            expressions.append(
-                "(rat_NumeroFactura = ? AND rat_NumeroIdentificacion = ? "
-                "AND rat_NumeroContrato = ?)"
-            )
-            params.extend(
-                [item["invoice"], item["nit_provider"], item["contract"]]
-            )
-
-        return "(" + " OR ".join(expressions) + ")", tuple(params)
+        # Se conserva el criterio de la automatización anterior: el vínculo
+        # inicial se realiza por número completo de factura. Contrato y NIT se
+        # devuelven desde RIPSArchivoTransaccion como datos propios del registro;
+        # no se usan como filtros para no descartar transacciones históricamente
+        # asociadas a una factura cuyo contrato fue corregido posteriormente.
+        invoice_numbers = list(dict.fromkeys(item["invoice"] for item in invoice_keys))
+        expressions = ["rat_NumeroFactura = ?" for _ in invoice_numbers]
+        return "(" + " OR ".join(expressions) + ")", tuple(invoice_numbers)
 
     @staticmethod
     def _fetch_all(connection, query: str, params: tuple) -> list[dict]:
