@@ -35,7 +35,8 @@ export const extractionApi = {
     if (contract) params.set("contract", contract);
     if (search && search.trim()) params.set("search", search.trim());
 
-    const suffix = params.size > 0 ? "?" + params.toString() : "";
+    const query = params.toString();
+    const suffix = query ? "?" + query : "";
     return apiFetch<CatalogItem[]>("/providers" + suffix);
   },
 
