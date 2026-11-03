@@ -54,7 +54,12 @@ export interface InvoiceFilters {
 }
 
 export interface PreparedSelection {
-  invoiceIds: string[];
-  transactionIds: string[];
-  preparedAt: string;
+  status: "prepared";
+  prepared_at: string;
+  invoice_ids: string[];
+  transaction_ids: string[];
+  invoice_count: number;
+  transaction_count: number;
+  contracts: string[];
+  providers: string[];
 }
