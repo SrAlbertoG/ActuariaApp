@@ -1,7 +1,6 @@
 """Casos de uso de búsqueda, detalle y catálogos de facturación."""
 
 from datetime import date, timedelta
-from pathlib import Path
 
 from app.core.config import get_settings
 from app.core.errors import AppError
@@ -58,6 +57,8 @@ class InvoiceService:
 
         try:
             for nit in self.fixed_repository.list_providers(contract):
+                if search and search.strip().casefold() not in nit.casefold():
+                    continue
                 providers.setdefault(nit, f"NIT {nit}")
         except AppError as exc:
             if exc.code != "fixed_cost_file_missing":
