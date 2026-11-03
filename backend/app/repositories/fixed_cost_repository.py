@@ -34,7 +34,6 @@ def _clean_identifier(value: object) -> str:
     if text.lower() in {"nan", "none", "nat"}:
         return ""
 
-    # Excel puede entregar valores numéricos enteros como texto terminado en .0.
     if re.fullmatch(r"\d+\.0", text):
         text = text[:-2]
 
@@ -76,7 +75,6 @@ def _parse_amount(value: object) -> Decimal | None:
 
     text = re.sub(r"[^0-9,.\-]", "", text)
     if "," in text and "." in text:
-        # El último separador se interpreta como separador decimal.
         if text.rfind(",") > text.rfind("."):
             text = text.replace(".", "").replace(",", ".")
         else:
@@ -93,7 +91,7 @@ def _parse_amount(value: object) -> Decimal | None:
 @lru_cache(maxsize=4)
 def _read_cached_file(path_text: str, modified_ns: int) -> pd.DataFrame:
     """Lee el Excel una vez por versión del archivo; la caché se invalida por mtime."""
-    del modified_ns  # El valor participa en la clave de caché, no en la lectura.
+    del modified_ns
 
     try:
         frame = pd.read_excel(
@@ -136,11 +134,10 @@ def _read_cached_file(path_text: str, modified_ns: int) -> pd.DataFrame:
         & (frame["invoice"] != "")
         & frame["service_month"].notna()
     ]
-
-    # Evita duplicar una factura por filas repetidas del archivo de origen.
     frame = frame.drop_duplicates(
         subset=["nit_provider", "contract", "invoice", "service_month"]
     )
+
     return frame.reset_index(drop=True)
 
 
@@ -191,15 +188,11 @@ class FixedCostRepository:
                 frame["invoice"].str.contains(invoice.strip(), case=False, na=False)
             ]
         if start_date:
-            start_month = date(start_date.year, start_date.month, 1)
-            frame = frame.loc[
-                frame["service_month"] >= pd.Timestamp(start_month)
-            ]
+            month_start = date(start_date.year, start_date.month, 1)
+            frame = frame.loc[frame["service_month"] >= pd.Timestamp(month_start)]
         if end_date:
-            end_month = date(end_date.year, end_date.month, 1)
-            frame = frame.loc[
-                frame["service_month"] <= pd.Timestamp(end_month)
-            ]
+            month_end = date(end_date.year, end_date.month, 1)
+            frame = frame.loc[frame["service_month"] <= pd.Timestamp(month_end)]
 
         return frame.sort_values(
             ["service_month", "invoice"],
@@ -239,15 +232,28 @@ class FixedCostRepository:
         provider_nit: str,
         contract: str,
     ) -> dict | None:
-        """Busca una factura concreta para consultar su detalle."""
-        records = self.search(
-            0,
-            1,
-            invoice=invoice,
-            provider_nit=provider_nit,
-            contract=contract,
-        )
-        return records[0] if records else None
+        """Busca una factura por su clave natural exacta."""
+        frame = self._load()
+        frame = frame.loc[
+            (frame["invoice"] == invoice.strip())
+            & (frame["nit_provider"] == provider_nit.strip())
+            & (frame["contract"] == contract.strip())
+        ]
+        if frame.empty:
+            return None
+
+        row = frame.sort_values("service_month", ascending=False).iloc[0]
+        return {
+            "invoice": row["invoice"],
+            "nit_provider": row["nit_provider"],
+            "provider_name": None,
+            "contract": row["contract"],
+            "period_reference": row["service_month"].date(),
+            "invoice_date": None,
+            "filing_date": None,
+            "billed_amount": row["billed_amount"],
+            "source": "base_fixed",
+        }
 
     def list_contracts(self, search: str | None = None) -> list[str]:
         frame = self._load()
@@ -261,7 +267,4 @@ class FixedCostRepository:
         frame = self._load()
         if contract:
             frame = frame.loc[frame["contract"] == contract.strip()]
-        return sorted(
-            frame["nit_provider"].dropna().unique().tolist(),
-            key=str.casefold,
-        )
+        return sorted(frame["nit_provider"].dropna().unique().tolist(), key=str.casefold)
