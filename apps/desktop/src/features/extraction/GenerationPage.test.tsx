@@ -58,6 +58,18 @@ function mockApi() {
       if (url.includes("/contracts")) {
         return json([{ value: "CNT-2026-9", label: "CNT-2026-9" }]);
       }
+      if (url.includes("/extraction/prepare")) {
+        return json({
+          status: "prepared",
+          prepared_at: "2026-11-03T19:00:00Z",
+          invoice_ids: ["ZmFrZQ"],
+          transaction_ids: ["1001"],
+          invoice_count: 1,
+          transaction_count: 1,
+          contracts: ["CNT-2026-9"],
+          providers: ["900123456"],
+        });
+      }
       if (url.includes("/transactions/search")) return json(transactionPage);
       if (url.includes("/invoices/")) return json(invoicePage.items[0]);
       if (url.includes("/invoices")) return json(invoicePage);
