@@ -35,7 +35,7 @@ class InvoicePage(BaseModel):
     total: int
     page: int
     page_size: int
-    warnings: list[str] = []
+    warnings: list[str] = Field(default_factory=list)
 
 
 class TransactionRead(BaseModel):
@@ -57,3 +57,11 @@ class TransactionPage(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class TransactionSearchRequest(BaseModel):
+    """Solicitud de búsqueda de transacciones para una selección de facturas."""
+
+    invoice_ids: list[str] = Field(min_length=1, max_length=250)
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=25, ge=1, le=100)
