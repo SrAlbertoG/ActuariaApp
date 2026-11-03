@@ -1,5 +1,5 @@
 import { useMemo, useState, type FormEvent } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
 import { extractionApi, PAGE_SIZE } from "./extractionApi";
@@ -266,6 +266,17 @@ export function GenerationPage() {
   const selectedInvoiceCount = selectedInvoiceIds.length;
   const selectedTransactionIds = Object.keys(selectedTransactions);
 
+  // El backend vuelve a validar el estado activo y la relación antes de
+  // confirmar la selección que consumirá el entregable 3.
+  const preparation = useMutation({
+    mutationFn: () =>
+      extractionApi.prepareSelection(
+        selectedInvoiceIds,
+        selectedTransactionIds,
+      ),
+    onSuccess: (result) => setPrepared(result),
+  });
+
   const handleFilterChange = (
     field: keyof InvoiceFilters,
     value: string,
@@ -298,6 +309,7 @@ export function GenerationPage() {
     setSelectedInvoices({});
     setSelectedTransactions({});
     setPrepared(null);
+    preparation.reset();
     setHasSearched(true);
     setFilterError(null);
   };
@@ -310,6 +322,7 @@ export function GenerationPage() {
     setSelectedInvoices({});
     setSelectedTransactions({});
     setPrepared(null);
+    preparation.reset();
     setHasSearched(false);
     setFilterError(null);
   };
@@ -347,6 +360,7 @@ export function GenerationPage() {
 
     setTransactionPage(1);
     setPrepared(null);
+    preparation.reset();
   };
 
   const toggleVisibleInvoices = (checked: boolean) => {
@@ -393,6 +407,7 @@ export function GenerationPage() {
 
     setTransactionPage(1);
     setPrepared(null);
+    preparation.reset();
   };
 
   const toggleTransaction = (
@@ -406,6 +421,7 @@ export function GenerationPage() {
       return next;
     });
     setPrepared(null);
+    preparation.reset();
   };
 
   const toggleVisibleTransactions = (checked: boolean) => {
@@ -418,6 +434,7 @@ export function GenerationPage() {
       return next;
     });
     setPrepared(null);
+    preparation.reset();
   };
 
   const handlePrepare = () => {
@@ -425,13 +442,9 @@ export function GenerationPage() {
       return;
     }
 
-    // El entregable 2 solo prepara la selección; la extracción pertenece
-    // al entregable 3 y no se ejecuta desde este botón.
-    setPrepared({
-      invoiceIds: selectedInvoiceIds,
-      transactionIds: selectedTransactionIds,
-      preparedAt: new Date().toISOString(),
-    });
+    // El backend comprueba los identificadores y el estado activo de RIPS.
+    // Esta llamada no inicia la extracción, que pertenece al entregable 3.
+    preparation.mutate();
   };
 
   return (
@@ -872,13 +885,23 @@ export function GenerationPage() {
             type="button"
             onClick={handlePrepare}
             disabled={
-              selectedInvoiceCount === 0 || selectedTransactionIds.length === 0
+              selectedInvoiceCount === 0 ||
+              selectedTransactionIds.length === 0 ||
+              preparation.isPending
             }
             className="rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            Confirmar selección
+            {preparation.isPending
+              ? "Validando selección…"
+              : "Confirmar selección"}
           </button>
         </section>
+
+        {preparation.isError && (
+          <p role="alert" className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+            {preparation.error.message}
+          </p>
+        )}
 
         {prepared && (
           <section
@@ -889,17 +912,27 @@ export function GenerationPage() {
               Selección preparada
             </p>
             <h2 className="mt-1 text-lg font-semibold text-slate-900">
-              {prepared.invoiceIds.length} facturas ·{" "}
-              {prepared.transactionIds.length} transacciones
+              {prepared.invoice_count} facturas ·{" "}
+              {prepared.transaction_count} transacciones
             </h2>
             <p className="mt-1 text-sm text-slate-500">
               Confirmada{" "}
-              {new Date(prepared.preparedAt).toLocaleString("es-CO")}. La
+              {new Date(prepared.prepared_at).toLocaleString("es-CO")}. La
               extracción aún no se ha iniciado.
             </p>
+            <div className="mt-3 grid gap-3 text-xs text-slate-600 sm:grid-cols-2">
+              <div>
+                <p className="font-semibold text-slate-700">Contratos RIPS</p>
+                <p>{prepared.contracts.length ? prepared.contracts.join(", ") : "No disponible"}</p>
+              </div>
+              <div>
+                <p className="font-semibold text-slate-700">NIT de prestadores</p>
+                <p>{prepared.providers.length ? prepared.providers.join(", ") : "No disponible"}</p>
+              </div>
+            </div>
             <p className="mt-3 text-xs text-slate-500">
-              Esta confirmación prepara los parámetros del entregable 2; la
-              ejecución y exportación se desarrollarán en el entregable 3.
+              La selección fue validada por FastAPI. La ejecución y exportación
+              se desarrollarán en el entregable 3.
             </p>
             <button
               type="button"
