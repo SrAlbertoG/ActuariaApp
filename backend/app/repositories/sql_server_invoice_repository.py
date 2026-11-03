@@ -2,6 +2,8 @@
 
 from datetime import date
 
+import pyodbc
+
 from app.core.errors import AppError
 
 
@@ -29,6 +31,12 @@ class SqlServerInvoiceRepository:
             cursor.execute(query, params)
             columns = [column[0] for column in cursor.description]
             return [dict(zip(columns, row)) for row in cursor.fetchall()]
+        except pyodbc.Error:
+            raise AppError(
+                "invoice_query_failed",
+                "No fue posible consultar las facturas en SQL Server. Verifica los permisos de lectura.",
+                503,
+            ) from None
         finally:
             cursor.close()
 
