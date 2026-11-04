@@ -119,20 +119,25 @@ se presentan como facturas históricas, pero sí participan en la deduplicación
 Solo se incluyen registros FPR cuya clave no exista en Base Montos Fijos. La
 exclusión se aplica tanto al conteo como a la paginación y al detalle de factura,
 de modo que un duplicado no reaparezca al cambiar de página ni al consultar su
-detalle. Si el archivo no está disponible, el backend omite tanto los periodos
-históricos como las facturas FPR, y devuelve una advertencia. No expone registros
-SQL cuando no puede demostrar que no están duplicados en Base Montos Fijos.
+detalle. Si el archivo falta o no puede leerse, el backend omite tanto los periodos
+históricos como las facturas FPR, devuelve cero resultados con una advertencia y
+bloquea el detalle FPR. No expone registros SQL cuando no puede demostrar que
+no están duplicados en Base Montos Fijos.
 
 ### Interfaz y selección
 
-- El control de contratos y el de NIT son campos de texto con sugerencias
-  filtradas a medida que se escribe. El texto libre se conserva aunque el
-  usuario no elija una sugerencia.
-- La casilla y la acción **Seleccionar todas** de facturas trabajan sobre todos
-  los resultados de la búsqueda, no solo la página visible.
-- Las transacciones que cumplen los criterios de búsqueda se preseleccionan
-  automáticamente en todas las páginas. El analista puede desmarcar registros
-  individuales o usar el control global de la tabla.
+- Contrato y NIT son campos de texto libre con sugerencias debajo del campo;
+  no se utilizan selects nativos. Se conserva el texto aun cuando no se elija
+  una sugerencia.
+- Las sugerencias admiten navegación por teclado: flechas arriba/abajo, Enter
+  para seleccionar la opción activa y Escape para cerrar.
+- **Seleccionar todas** las facturas descarga y selecciona todas las páginas
+  del resultado, no solo las filas visibles.
+- El encabezado de transacciones dispone de **Seleccionar todas las
+  transacciones** y **Quitar selección global**, que operan sobre el conjunto
+  completo consultado aunque la tabla esté mostrando otra página.
+- Las transacciones coincidentes se preseleccionan automáticamente. Los cambios
+  manuales y globales se conservan al paginar.
 - La preferencia de tema claro/oscuro se aplica a toda la aplicación y se
   conserva localmente entre aperturas.
 - La selección global está limitada a 1.000 facturas y 1.000 transacciones por
