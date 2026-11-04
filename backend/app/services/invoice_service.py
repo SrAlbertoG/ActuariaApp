@@ -45,6 +45,8 @@ class InvoiceService:
         warnings: list[str] = []
         base_count = 0
         sql_count = 0
+        fixed_invoice_keys: set[tuple[str, str, str]] = set()
+        fixed_file_missing = False
         base_filters = {
             "contract": contract,
             "provider_nit": provider_nit,
@@ -74,20 +76,33 @@ class InvoiceService:
             "end_date": end_date,
         }
 
+        try:
+            fixed_invoice_keys = self.fixed_repository.invoice_keys()
+        except AppError as exc:
+            if exc.code != "fixed_cost_file_missing":
+                raise
+            fixed_file_missing = True
+            warnings.append(
+                "No se encontró Base Montos Fijos. No se pueden consultar sus "
+                "periodos históricos ni excluir posibles duplicados de FPR."
+            )
+
         with self.auth_service.connection() as connection:
             if use_sql:
-                sql_count = self.sql_repository.count(connection, **sql_filters)
-
-            if use_base:
-                try:
-                    base_count = self.fixed_repository.count(**base_filters)
-                except AppError as exc:
-                    if exc.code != "fixed_cost_file_missing":
-                        raise
-                    warnings.append(
-                        "No se encontró Base Montos Fijos; los periodos anteriores "
-                        "a septiembre de 2026 no están disponibles en esta instalación."
+                if fixed_invoice_keys:
+                    sql_count = self.sql_repository.count(
+                        connection,
+                        excluded_keys=fixed_invoice_keys,
+                        **sql_filters,
                     )
+                else:
+                    sql_count = self.sql_repository.count(
+                        connection,
+                        **sql_filters,
+                    )
+
+            if use_base and not fixed_file_missing:
+                base_count = self.fixed_repository.count(**base_filters)
 
             # Las fuentes no se solapan por el corte temporal. Por eso se puede
             # paginar cada bloque en orden cronológico sin traer todos los registros.
@@ -108,12 +123,21 @@ class InvoiceService:
 
                 if local_limit:
                     if source == "sql_server":
-                        records = self.sql_repository.search(
-                            connection,
-                            local_offset,
-                            local_limit,
-                            **sql_filters,
-                        )
+                        if fixed_invoice_keys:
+                            records = self.sql_repository.search(
+                                connection,
+                                local_offset,
+                                local_limit,
+                                excluded_keys=fixed_invoice_keys,
+                                **sql_filters,
+                            )
+                        else:
+                            records = self.sql_repository.search(
+                                connection,
+                                local_offset,
+                                local_limit,
+                                **sql_filters,
+                            )
                     else:
                         records = self.fixed_repository.search(
                             local_offset,
@@ -144,12 +168,24 @@ class InvoiceService:
                 key["contract"],
             )
         else:
+            try:
+                fixed_invoice_keys = self.fixed_repository.invoice_keys()
+            except AppError as exc:
+                if exc.code != "fixed_cost_file_missing":
+                    raise
+                fixed_invoice_keys = set()
+
             with self.auth_service.connection() as connection:
                 record = self.sql_repository.find_one(
                     connection,
                     key["invoice"],
                     key["nit_provider"],
                     key["contract"],
+                    **(
+                        {"excluded_keys": fixed_invoice_keys}
+                        if fixed_invoice_keys
+                        else {}
+                    ),
                 )
 
         if record is None:
