@@ -1,8 +1,9 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
 import { extractionApi, PAGE_SIZE } from "./extractionApi";
+import { ThemeToggle } from "../theme/ThemeToggle";
 import type {
   Invoice,
   InvoiceFilters,
@@ -18,7 +19,7 @@ const EMPTY_FILTERS: InvoiceFilters = {
   end_date: "",
 };
 
-const MAX_SELECTED_INVOICES = 250;
+const MAX_SELECTED_INVOICES = 1000;
 const MAX_SELECTED_TRANSACTIONS = 1000;
 
 const inputClass =
@@ -217,6 +218,10 @@ export function GenerationPage() {
     useState<InvoiceFilters>(EMPTY_FILTERS);
   const [hasSearched, setHasSearched] = useState(false);
   const [filterError, setFilterError] = useState<string | null>(null);
+  const [selectionError, setSelectionError] = useState<string | null>(null);
+  const [isSelectingAllInvoices, setIsSelectingAllInvoices] = useState(false);
+  const [showContractSuggestions, setShowContractSuggestions] = useState(false);
+  const [showProviderSuggestions, setShowProviderSuggestions] = useState(false);
   const [invoicePage, setInvoicePage] = useState(1);
   const [transactionPage, setTransactionPage] = useState(1);
   const [selectedInvoices, setSelectedInvoices] = useState<
@@ -229,8 +234,20 @@ export function GenerationPage() {
   const [prepared, setPrepared] = useState<PreparedSelection | null>(null);
 
   const contracts = useQuery({
-    queryKey: ["invoice-contracts"],
-    queryFn: () => extractionApi.getContracts(),
+    queryKey: ["invoice-contracts", filters.contract],
+    queryFn: () => extractionApi.getContracts(filters.contract),
+    enabled: showContractSuggestions && filters.contract.trim().length > 0,
+  });
+
+  const providers = useQuery({
+    queryKey: ["invoice-providers", filters.contract, filters.provider_nit],
+    queryFn: () =>
+      extractionApi.getProviders(
+        filters.contract.trim() || undefined,
+        filters.provider_nit,
+      ),
+    enabled:
+      showProviderSuggestions && filters.provider_nit.trim().length > 0,
   });
 
   const invoices = useQuery({
@@ -245,35 +262,54 @@ export function GenerationPage() {
   );
 
   const transactions = useQuery({
-    queryKey: ["transactions", selectedInvoiceIds, transactionPage],
+    queryKey: ["transactions", selectedInvoiceIds, appliedFilters],
     queryFn: () =>
-      extractionApi.searchTransactions(selectedInvoiceIds, transactionPage),
+      extractionApi.searchAllTransactions(selectedInvoiceIds, appliedFilters),
     enabled: selectedInvoiceIds.length > 0,
   });
 
   const invoiceRows = invoices.data?.items ?? [];
-  const transactionRows = transactions.data?.items ?? [];
-
-  const allVisibleInvoicesSelected =
-    invoiceRows.length > 0 &&
-    invoiceRows.every((invoice) => Boolean(selectedInvoices[invoice.id]));
-
-  const allVisibleTransactionsSelected =
-    transactionRows.length > 0 &&
-    transactionRows.every((transaction) =>
-      Boolean(selectedTransactions[transaction.id]),
-    );
+  const allTransactionRows = transactions.data?.items ?? [];
+  const transactionRows = allTransactionRows.slice(
+    (transactionPage - 1) * PAGE_SIZE,
+    transactionPage * PAGE_SIZE,
+  );
 
   const selectedInvoiceCount = selectedInvoiceIds.length;
   const selectedTransactionIds = Object.keys(selectedTransactions);
+  const allInvoicesSelected =
+    Boolean(invoices.data?.total) &&
+    selectedInvoiceCount === invoices.data?.total;
+  const allTransactionsSelected =
+    allTransactionRows.length > 0 &&
+    allTransactionRows.every((transaction) =>
+      Boolean(selectedTransactions[transaction.id]),
+    );
 
-  // El backend vuelve a validar el estado activo y la relación antes de
-  // confirmar la selección que consumirá el entregable 3.
+  // La consulta recupera los registros de todas las páginas. Preselecciona
+  // los que cumplen los filtros originales y conserva los cambios manuales.
+  useEffect(() => {
+    if (!transactions.data?.items.length) return;
+    setSelectedTransactions((current) => {
+      const next = { ...current };
+      for (const transaction of transactions.data.items) {
+        if (
+          Object.keys(next).length < MAX_SELECTED_TRANSACTIONS ||
+          next[transaction.id]
+        ) {
+          next[transaction.id] = transaction;
+        }
+      }
+      return next;
+    });
+  }, [transactions.dataUpdatedAt]);
+
   const preparation = useMutation({
     mutationFn: () =>
       extractionApi.prepareSelection(
         selectedInvoiceIds,
         selectedTransactionIds,
+        appliedFilters,
       ),
     onSuccess: (result) => setPrepared(result),
   });
@@ -288,6 +324,7 @@ export function GenerationPage() {
       ...(field === "contract" ? { provider_nit: "" } : {}),
     }));
     setFilterError(null);
+    setSelectionError(null);
   };
 
   const handleSearch = (event: FormEvent<HTMLFormElement>) => {
@@ -309,6 +346,7 @@ export function GenerationPage() {
     setTransactionPage(1);
     setSelectedInvoices({});
     setSelectedTransactions({});
+    setSelectionError(null);
     setPrepared(null);
     preparation.reset();
     setHasSearched(true);
@@ -322,6 +360,7 @@ export function GenerationPage() {
     setTransactionPage(1);
     setSelectedInvoices({});
     setSelectedTransactions({});
+    setSelectionError(null);
     setPrepared(null);
     preparation.reset();
     setHasSearched(false);
@@ -366,52 +405,36 @@ export function GenerationPage() {
     preparation.reset();
   };
 
-  const toggleVisibleInvoices = (checked: boolean) => {
-    setSelectedInvoices((current) => {
-      const next = { ...current };
-
-      if (checked) {
-        for (const invoice of invoiceRows) {
-          if (
-            Object.keys(next).length >= MAX_SELECTED_INVOICES &&
-            !next[invoice.id]
-          ) {
-            break;
-          }
-          next[invoice.id] = invoice;
-        }
-      } else {
-        invoiceRows.forEach((invoice) => delete next[invoice.id]);
-      }
-
-      return next;
-    });
-
+  const toggleAllInvoices = async (checked: boolean) => {
+    setSelectionError(null);
     if (!checked) {
-      const visibleInvoiceIds = new Set(invoiceRows.map((invoice) => invoice.id));
-      const invoiceNumbersStillSelected = new Set(
-        Object.values(selectedInvoices)
-          .filter((invoice) => !visibleInvoiceIds.has(invoice.id))
-          .map((invoice) => invoice.invoice),
-      );
-      const invoiceNumbersToRemove = new Set(
-        invoiceRows
-          .map((invoice) => invoice.invoice)
-          .filter((number) => !invoiceNumbersStillSelected.has(number)),
-      );
-
-      setSelectedTransactions((current) => {
-        const next = { ...current };
-        Object.keys(next).forEach((id) => {
-          if (invoiceNumbersToRemove.has(next[id].invoice)) delete next[id];
-        });
-        return next;
-      });
+      setSelectedInvoices({});
+      setSelectedTransactions({});
+      setTransactionPage(1);
+      setPrepared(null);
+      preparation.reset();
+      return;
     }
 
-    setTransactionPage(1);
-    setPrepared(null);
-    preparation.reset();
+    setIsSelectingAllInvoices(true);
+    try {
+      const all = await extractionApi.searchAllInvoices(appliedFilters);
+      setSelectedInvoices(
+        Object.fromEntries(all.map((invoice) => [invoice.id, invoice])),
+      );
+      setSelectedTransactions({});
+      setTransactionPage(1);
+      setPrepared(null);
+      preparation.reset();
+    } catch (error) {
+      setSelectionError(
+        error instanceof Error
+          ? error.message
+          : "No fue posible seleccionar todas las facturas.",
+      );
+    } finally {
+      setIsSelectingAllInvoices(false);
+    }
   };
 
   const toggleTransaction = (
@@ -436,10 +459,10 @@ export function GenerationPage() {
     preparation.reset();
   };
 
-  const toggleVisibleTransactions = (checked: boolean) => {
+  const toggleAllTransactions = (checked: boolean) => {
     setSelectedTransactions((current) => {
       const next = { ...current };
-      transactionRows.forEach((transaction) => {
+      allTransactionRows.forEach((transaction) => {
         if (checked) {
           if (
             Object.keys(next).length < MAX_SELECTED_TRANSACTIONS ||
@@ -453,6 +476,7 @@ export function GenerationPage() {
       });
       return next;
     });
+    setSelectionError(null);
     setPrepared(null);
     preparation.reset();
   };
@@ -487,9 +511,12 @@ export function GenerationPage() {
               </h1>
             </div>
           </div>
-          <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
-            Conexión SQL activa
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
+              Conexión SQL activa
+            </span>
+            <ThemeToggle />
+          </div>
         </div>
       </header>
 
