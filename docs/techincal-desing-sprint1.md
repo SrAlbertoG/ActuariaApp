@@ -488,9 +488,9 @@ Los servicios utilizarán repositorios para acceder a SQL Server o a las fuentes
 
 La consulta a `BiPagosFPR` deberá restringir los registros a:
 
-- `EstadoFacturarad = 'Finalizada'`; o
-- `EstadoFacturarad = 'Para respuesta prestador'` cuando
-  `ValorPagarrad` no sea nulo, pueda convertirse a decimal y sea distinto
+- `NombreEstadoFactura = 'Finalizada'`; o
+- `NombreEstadoFactura = 'Para respuesta prestador'` cuando
+  `ValorPagar` no sea nulo, pueda convertirse a decimal y sea distinto
   de cero.
 
 Los estados se comparan después de quitar espacios externos. Para el segundo
@@ -900,7 +900,7 @@ En la construcción de Windows se utilizará PyInstaller para generar el ejecuta
 - Resultados paginados.
 - Volúmenes grandes de información.
 - Facturas FPR con estado Finalizada.
-- Facturas FPR Para respuesta prestador con ValorPagarrad nulo, cero, no numérico o distinto de cero.
+- Facturas FPR Para respuesta prestador con ValorPagar nulo, cero, no numérico o distinto de cero.
 - Exclusión de duplicados FPR frente a Base Montos Fijos por NIT, contrato y número completo de factura.
 - Búsqueda de transacciones usando únicamente los filtros originales suministrados por el analista.
 - Rechazo en preparación de transacciones inactivas o que no cumplan los filtros originales.
