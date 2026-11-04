@@ -113,8 +113,9 @@ normalizadas del Excel de costos fijos. La clave natural es:
 Solo se incluyen registros FPR cuya clave no exista en Base Montos Fijos. La
 exclusión se aplica tanto al conteo como a la paginación y al detalle de factura,
 de modo que un duplicado no reaparezca al cambiar de página ni al consultar su
-detalle. Si el archivo no está disponible, el sistema informa que no puede
-aplicar esta regla de deduplicación; no simula que la validación fue exitosa.
+detalle. Si el archivo no está disponible, el backend omite tanto los periodos
+históricos como las facturas FPR, y devuelve una advertencia. No expone registros
+SQL cuando no puede demostrar que no están duplicados en Base Montos Fijos.
 
 ### Interfaz y selección
 
