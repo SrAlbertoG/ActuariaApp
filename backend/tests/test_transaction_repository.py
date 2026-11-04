@@ -25,6 +25,7 @@ def test_build_filter_uses_invoice_placeholders_and_parameters():
     where, params = SqlServerTransactionRepository._build_filter(keys)
 
     assert where.count("?") == 2
+    assert "rat_NumeroFactura IN (?, ?)" in where
     assert "FE001' OR 1=1 --" not in where
     assert params == ("FE001' OR 1=1 --", "FE002")
 
