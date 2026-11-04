@@ -308,8 +308,9 @@ natural normalizada formada por NIT, contrato y número completo de factura
 detalle, no únicamente en la primera página.
 
 Si el archivo de costos fijos no está disponible, el sistema debe advertirlo
-explícitamente porque no puede garantizar la exclusión de duplicados contra
-esa fuente.
+explícitamente y omitir las facturas FPR, ya que no puede garantizar la
+exclusión de duplicados contra esa fuente. No se deben presentar facturas SQL
+como elegibles mientras no pueda ejecutarse esta validación.
 
 ## 5.5. Criterios de búsqueda y selección de transacciones
 
