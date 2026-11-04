@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+node_modules/
+dist/
+target/
+.env
+*.log
+# Nunca versionar datos reales ni exportaciones
+data/
+exports/
+*.xlsx
+*.sqlite
