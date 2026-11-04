@@ -22,8 +22,6 @@ const invoicePage = {
     },
   ],
   total: 1,
-  page: 1,
-  page_size: 25,
   warnings: [],
 };
 
@@ -40,8 +38,6 @@ const transactionPage = {
     },
   ],
   total: 1,
-  page: 1,
-  page_size: 25,
 };
 
 function mockApi() {
