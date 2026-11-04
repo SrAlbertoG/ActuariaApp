@@ -112,6 +112,10 @@ normalizadas del Excel de costos fijos. La clave natural es:
 
 `(NIT, contrato, prefijo + factura)`
 
+Las claves se extraen de todas las filas que tengan NIT, contrato y factura
+completos, incluso si su MesdeServicio está vacío o no es válido. Esas filas no
+se presentan como facturas históricas, pero sí participan en la deduplicación.
+
 Solo se incluyen registros FPR cuya clave no exista en Base Montos Fijos. La
 exclusión se aplica tanto al conteo como a la paginación y al detalle de factura,
 de modo que un duplicado no reaparezca al cambiar de página ni al consultar su
