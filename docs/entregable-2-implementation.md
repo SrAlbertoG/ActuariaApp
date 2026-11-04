@@ -63,8 +63,10 @@ de sesión y la dependencia de conexión SQL Server activa.
 Filtros de /invoices: contract, provider_nit, invoice, start_date,
 end_date, page y page_size.
 
-El endpoint POST recibe JSON con invoice_ids, page y page_size. Se usa
-para selecciones múltiples y evita colocar cientos de identificadores en la URL.
+El endpoint POST recibe JSON con invoice_ids, page y page_size, y admite
+contract, provider_nit e invoice para conservar los criterios no vacíos de la
+búsqueda original. Se usa para selecciones múltiples y evita colocar cientos de
+identificadores en la URL.
 La selección admite hasta 1.000 facturas y hasta 1.000 transacciones. La API
 devuelve páginas de hasta 100 registros. La interfaz recupera los resultados
 necesarios para aplicar la selección global entre páginas; la tabla de
