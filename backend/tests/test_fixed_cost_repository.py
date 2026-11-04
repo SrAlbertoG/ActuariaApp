@@ -56,3 +56,26 @@ def test_fixed_cost_repository_normalizes_invoice_and_filters_month(tmp_path: Pa
     assert str(
         repository.find_one("FE002", "900123456", "CNT-2026-9")["billed_amount"]
     ) == "1250000"
+
+
+def test_invoice_keys_include_complete_rows_without_a_valid_service_month(tmp_path: Path):
+    file_path = tmp_path / "BaseMontosFijos2026.xlsx"
+    pd.DataFrame(
+        [
+            {
+                "Nit": "900123456",
+                "Contrato": "CNT-2026-9",
+                "Prefijo": "FE",
+                "Factura": "003",
+                "MesdeServicio": None,
+                "ValorFacturaRadicada": "250000",
+            }
+        ]
+    ).to_excel(file_path, index=False)
+
+    repository = FixedCostRepository(file_path)
+
+    assert repository.invoice_keys() == {
+        ("900123456", "CNT-2026-9", "FE003")
+    }
+    assert repository.count(contract="CNT-2026-9") == 0
