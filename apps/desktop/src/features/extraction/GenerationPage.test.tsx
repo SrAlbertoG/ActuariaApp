@@ -75,8 +75,8 @@ function mockApi() {
         });
       }
       if (url.includes("/transactions/dataset")) return json({ items: transactionPage.items, total: transactionPage.total });
-      if (url.includes("/invoices/")) return json(invoicePage.items[0]);
       if (url.includes("/invoices/dataset")) return json({ items: invoicePage.items, total: invoicePage.total, warnings: [] });
+      if (url.includes("/invoices/")) return json(invoicePage.items[0]);
       return json({});
     }),
   );
