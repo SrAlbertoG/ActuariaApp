@@ -203,3 +203,32 @@ def test_search_fails_closed_when_fixed_cost_file_is_missing(monkeypatch):
     assert result.total == 0
     assert result.items == []
     assert any("Se omitieron" in warning for warning in result.warnings)
+
+
+def test_search_dataset_rejects_more_than_limit(monkeypatch):
+    from app.core.errors import AppError
+
+    settings = SimpleNamespace(
+        invoice_source_cutoff=date(2026, 9, 1),
+        fixed_costs_file=Path("unused.xlsx"),
+        fpr_period_field="FechaFactura",
+    )
+    monkeypatch.setattr(invoice_service, "get_settings", lambda: settings)
+
+    class LargeFixedRepository(FakeFixedRepository):
+        def count(self, **filters):
+            return 1001
+
+    service = invoice_service.InvoiceService(FakeAuthService())
+    service.fixed_repository = LargeFixedRepository()
+    service.sql_repository = FakeSqlRepository("FechaFactura", date(2026, 9, 1))
+
+    try:
+        service.search_dataset(
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 8, 31),
+            max_records=1000,
+        )
+        assert False, "Expected dataset size limit error"
+    except AppError as error:
+        assert error.code == "invoice_result_limit_exceeded"
