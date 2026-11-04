@@ -310,10 +310,10 @@ presentan en resultados históricos, pero sí se utilizan para bloquear
 duplicados. La regla debe aplicarse en el conteo, paginación y detalle, no
 únicamente en la primera página.
 
-Si el archivo de costos fijos no está disponible, el sistema debe advertirlo
-explícitamente y omitir las facturas FPR, ya que no puede garantizar la
-exclusión de duplicados contra esa fuente. No se deben presentar facturas SQL
-como elegibles mientras no pueda ejecutarse esta validación.
+Si el archivo de costos fijos falta o no puede leerse, el backend debe fallar
+de forma segura: omite tanto las facturas históricas como las FPR, devuelve cero
+resultados y adjunta una advertencia. El detalle de facturas FPR también queda
+bloqueado hasta que pueda comprobarse la deduplicación contra el Excel.
 
 ## 5.5. Criterios de búsqueda y selección de transacciones
 
@@ -335,18 +335,32 @@ originales.
 
 ## 5.6. Comportamiento de la interfaz
 
-Los filtros de contrato y NIT deberán ser campos de texto con sugerencias
-dinámicas que se actualizan al escribir. El usuario podrá conservar texto libre
-sin estar obligado a elegir una opción del catálogo.
+Los filtros de contrato y NIT serán campos de texto libre, no listas desplegables
+nativas. Las sugerencias del catálogo se mostrarán inmediatamente debajo del
+campo y se actualizarán conforme se escribe. El analista podrá conservar el
+texto sin elegir una sugerencia.
 
-La selección global de facturas y transacciones debe actuar sobre todos los
-resultados de la búsqueda, sin repetir la acción al cambiar de página. La
-aplicación admitirá hasta 1.000 facturas y 1.000 transacciones por preparación;
-si se supera el límite, se informará al usuario y no se aceptará una selección
-parcial como si fuera total.
+Las sugerencias admitirán teclado: flechas arriba/abajo para recorrer opciones,
+Enter para elegir la sugerencia activa y Escape para cerrar la lista. El envío
+del formulario seguirá funcionando con texto libre.
 
-La aplicación deberá ofrecer tema claro y oscuro para todas las pantallas y
-recordar la preferencia local del analista.
+**Seleccionar todas las facturas** recuperará las páginas del conjunto completo
+de la búsqueda y seleccionará todos sus resultados, no solo los de la página
+visible. La tabla de transacciones ofrecerá **Seleccionar todas las
+transacciones** y **Quitar selección global** para operar sobre todas las
+coincidencias ya consultadas, aunque se esté visualizando otra página. Las
+selecciones individuales y globales se conservarán al paginar.
+
+Las transacciones coincidentes se preseleccionarán automáticamente en el
+conjunto completo consultado. El analista podrá desmarcar filas individuales o
+quitar la selección global.
+
+La aplicación admitirá hasta 1.000 facturas y 1.000 transacciones por
+preparación; si se supera el límite, se informará al usuario y no se aceptará
+una selección parcial como si fuera total.
+
+La aplicación ofrecerá tema claro y oscuro para todas las pantallas y recordará
+la preferencia local del analista.
 
 # 6. Especificación funcional de extracción RIPS
 
