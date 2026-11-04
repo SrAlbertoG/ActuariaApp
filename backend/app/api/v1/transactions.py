@@ -26,6 +26,9 @@ def search_transactions(
     """Consulta paginada de transacciones con un cuerpo JSON de tamaño acotado."""
     return service.search(
         body.invoice_ids,
+        contract=body.contract,
+        provider_nit=body.provider_nit,
+        invoice=body.invoice,
         page=body.page,
         page_size=body.page_size,
     )
