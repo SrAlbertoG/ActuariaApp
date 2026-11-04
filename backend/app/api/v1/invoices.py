@@ -5,7 +5,7 @@ from datetime import date
 from fastapi import APIRouter, Depends, Query
 
 from app.api.deps import require_sql_connection
-from app.schemas.invoices import CatalogItem, InvoicePage, InvoiceRead
+from app.schemas.invoices import CatalogItem, InvoiceDataset, InvoicePage, InvoiceRead
 from app.services.auth_service import AuthService
 from app.services.contract_service import ContractService
 from app.services.invoice_service import InvoiceService
@@ -76,6 +76,26 @@ def search_invoices(
         page=page,
         page_size=page_size,
     )
+
+
+@router.get("/invoices/dataset", response_model=InvoiceDataset)
+def search_invoice_dataset(
+    contract: str | None = Query(default=None, max_length=100),
+    provider_nit: str | None = Query(default=None, max_length=50),
+    invoice: str | None = Query(default=None, max_length=100),
+    start_date: date | None = None,
+    end_date: date | None = None,
+    service: InvoiceService = Depends(get_invoice_service),
+):
+    """Devuelve hasta 1000 facturas para paginación local sin más consultas."""
+    result = service.search_dataset(
+        contract=contract,
+        provider_nit=provider_nit,
+        invoice=invoice,
+        start_date=start_date,
+        end_date=end_date,
+    )
+    return InvoiceDataset(items=result.items, total=result.total, warnings=result.warnings)
 
 
 @router.get("/invoices/{invoice_id}", response_model=InvoiceRead)
