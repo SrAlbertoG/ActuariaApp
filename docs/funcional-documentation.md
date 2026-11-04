@@ -689,3 +689,18 @@ No forman parte de estos tres entregables:
 - [backend/homologacion.py](https://github.com/SrAlbertoG/Automatizacion_BusquedaContratos/blob/master/backend/homologacion.py)
 - [backend/monitorDeCostos.py](https://github.com/SrAlbertoG/Automatizacion_BusquedaContratos/blob/master/backend/monitorDeCostos.py)
 
+
+
+## Comportamiento de búsqueda y paginación del Entregable 2
+
+En la pantalla de facturas, el backend prepara el conjunto completo de resultados
+cuando contiene hasta 1.000 registros. La interfaz muestra 25 filas por página,
+pero el cambio de página es local y no vuelve a consultar la base de datos. La
+selección global de facturas marca inmediatamente los registros ya cargados; la
+consulta de transacciones ocurre después, sin retrasar la actualización visual
+del checkbox.
+
+Si la búsqueda supera 1.000 facturas o la selección produce más de 1.000
+transacciones, se solicita al analista reducir los filtros. El sistema no debe
+mostrar conjuntos truncados como si fueran completos. Las transacciones también
+se recuperan en una única consulta de dataset y se paginan localmente.
