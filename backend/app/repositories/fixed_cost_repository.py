@@ -139,12 +139,21 @@ def _read_cached_file(path_text: str, modified_ns: int) -> pd.DataFrame:
     )
     frame["billed_amount"] = frame["ValorFacturaRadicada"].map(_parse_amount)
 
+    # Conserva todas las claves completas para deduplicación, incluso si
+    # una fila no tiene mes de servicio válido. Para consultas históricas se
+    # filtrarán por separado las filas sin fecha.
     frame = frame.loc[
         (frame["nit_provider"] != "")
         & (frame["contract"] != "")
         & (frame["invoice"] != "")
-        & frame["service_month"].notna()
     ]
+    # Cuando una clave aparece varias veces, prioriza la fila con mes válido
+    # para que una fila incompleta no oculte una factura histórica consultable.
+    frame = frame.sort_values(
+        "service_month",
+        ascending=False,
+        na_position="last",
+    )
     frame = frame.drop_duplicates(
         subset=["nit_provider", "contract", "invoice"],
         keep="first",
@@ -219,6 +228,9 @@ class FixedCostRepository:
         start_date: date | None = None,
         end_date: date | None = None,
     ) -> pd.DataFrame:
+        # Las filas sin periodo válido cuentan para deduplicación, no para
+        # la consulta de facturas históricas.
+        frame = frame.loc[frame["service_month"].notna()]
         if contract:
             frame = frame.loc[frame["contract"] == contract.strip()]
         if provider_nit:
@@ -276,6 +288,7 @@ class FixedCostRepository:
     ) -> dict | None:
         """Busca una factura por su clave natural exacta."""
         frame = self._load()
+        frame = frame.loc[frame["service_month"].notna()]
         frame = frame.loc[
             (frame["invoice"] == invoice.strip())
             & (frame["nit_provider"] == provider_nit.strip())
