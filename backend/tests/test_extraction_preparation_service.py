@@ -22,10 +22,18 @@ class FakeTransactionRepository:
         self.records = records
         self.received_invoice_keys = None
         self.received_transaction_ids = None
+        self.received_filters = None
 
-    def validate_selection(self, connection, invoice_keys, transaction_ids):
+    def validate_selection(
+        self,
+        connection,
+        invoice_keys,
+        transaction_ids,
+        **filters,
+    ):
         self.received_invoice_keys = invoice_keys
         self.received_transaction_ids = transaction_ids
+        self.received_filters = filters
         return self.records
 
 
@@ -92,3 +100,26 @@ def test_prepare_rejects_inactive_or_unrelated_transactions():
 
     assert error.value.code == "invalid_transaction_selection"
     assert error.value.status_code == 409
+
+
+def test_prepare_revalidates_only_the_filters_used_for_invoice_search():
+    service = ExtractionPreparationService(FakeAuthService())
+    repository = FakeTransactionRepository(
+        [
+            {
+                "id": "501",
+                "invoice": "FE001",
+                "contract": "CNT-2026-9",
+                "nit_provider": "900123456",
+            }
+        ]
+    )
+    service.transaction_repository = repository
+
+    service.prepare(
+        [make_invoice_id()],
+        ["501"],
+        provider_nit="900123456",
+    )
+
+    assert repository.received_filters == {"provider_nit": "900123456"}
