@@ -304,8 +304,11 @@ se descartan los valores nulos, cero o que no puedan convertirse a un número.
 Antes de presentar facturas de SQL Server, el sistema debe verificar que no
 exista la misma factura en Base Montos Fijos. La comparación usa la clave
 natural normalizada formada por NIT, contrato y número completo de factura
-(`Prefijo + Factura`). La regla debe aplicarse en el conteo, paginación y
-detalle, no únicamente en la primera página.
+(`Prefijo + Factura`). Se consideran todas las filas con esa clave completa,
+incluso cuando `MesdeServicio` esté vacío o no sea válido; esas filas no se
+presentan en resultados históricos, pero sí se utilizan para bloquear
+duplicados. La regla debe aplicarse en el conteo, paginación y detalle, no
+únicamente en la primera página.
 
 Si el archivo de costos fijos no está disponible, el sistema debe advertirlo
 explícitamente y omitir las facturas FPR, ya que no puede garantizar la
