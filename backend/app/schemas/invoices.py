@@ -63,7 +63,10 @@ class TransactionPage(BaseModel):
 class TransactionSearchRequest(BaseModel):
     """Solicitud de búsqueda de transacciones para una selección de facturas."""
 
-    invoice_ids: list[str] = Field(min_length=1, max_length=250)
+    invoice_ids: list[str] = Field(min_length=1, max_length=1000)
+    contract: str | None = Field(default=None, max_length=100)
+    provider_nit: str | None = Field(default=None, max_length=50)
+    invoice: str | None = Field(default=None, max_length=100)
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=25, ge=1, le=100)
 
@@ -72,8 +75,11 @@ class TransactionSearchRequest(BaseModel):
 class ExtractionPreparationRequest(BaseModel):
     """Facturas y transacciones que el analista desea dejar preparadas."""
 
-    invoice_ids: list[str] = Field(min_length=1, max_length=250)
+    invoice_ids: list[str] = Field(min_length=1, max_length=1000)
     transaction_ids: list[str] = Field(min_length=1, max_length=1000)
+    contract: str | None = Field(default=None, max_length=100)
+    provider_nit: str | None = Field(default=None, max_length=50)
+    invoice: str | None = Field(default=None, max_length=100)
 
 
 class ExtractionPreparationRead(BaseModel):
