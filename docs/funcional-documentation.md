@@ -289,6 +289,61 @@ La interfaz permitirá consultar las transacciones asociadas a las facturas y re
 
 ---
 
+## 5.4. Reglas obligatorias de elegibilidad y deduplicación
+
+Para las facturas provenientes de `BiPagosFPR`, únicamente se tendrán en
+cuenta los registros con estos estados:
+
+- **Finalizada:** la factura se incluye.
+- **Para respuesta prestador:** la factura se incluye solamente cuando
+  `ValorPagarrad` no sea nulo y su valor numérico sea diferente de cero.
+
+Los demás estados se descartan. Para el estado Para respuesta prestador también
+se descartan los valores nulos, cero o que no puedan convertirse a un número.
+
+Antes de presentar facturas de SQL Server, el sistema debe verificar que no
+exista la misma factura en Base Montos Fijos. La comparación usa la clave
+natural normalizada formada por NIT, contrato y número completo de factura
+(`Prefijo + Factura`). La regla debe aplicarse en el conteo, paginación y
+detalle, no únicamente en la primera página.
+
+Si el archivo de costos fijos no está disponible, el sistema debe advertirlo
+explícitamente porque no puede garantizar la exclusión de duplicados contra
+esa fuente.
+
+## 5.5. Criterios de búsqueda y selección de transacciones
+
+La búsqueda de transacciones parte de las facturas seleccionadas y conserva la
+condición `rat_Activo = 'Activo'`. Además, debe aplicar únicamente los
+parámetros que el analista utilizó para buscar facturas:
+
+- Si se escribió NIT, comparar con `rat_NumeroIdentificacion`.
+- Si se escribió contrato, comparar con `rat_NumeroContrato`.
+- Si se escribió número o fragmento de factura, comparar con
+  `rat_NumeroFactura`.
+- Si se utilizaron varios criterios, deben cumplirse todos.
+- Los criterios que quedaron vacíos no deben agregarse al filtro.
+
+La interfaz preseleccionará las transacciones que cumplan las reglas en todas
+las páginas. La preparación de extracción volverá a comprobar tanto la
+actividad como la relación de cada transacción con las facturas y los filtros
+originales.
+
+## 5.6. Comportamiento de la interfaz
+
+Los filtros de contrato y NIT deberán ser campos de texto con sugerencias
+dinámicas que se actualizan al escribir. El usuario podrá conservar texto libre
+sin estar obligado a elegir una opción del catálogo.
+
+La selección global de facturas y transacciones debe actuar sobre todos los
+resultados de la búsqueda, sin repetir la acción al cambiar de página. La
+aplicación admitirá hasta 1.000 facturas y 1.000 transacciones por preparación;
+si se supera el límite, se informará al usuario y no se aceptará una selección
+parcial como si fuera total.
+
+La aplicación deberá ofrecer tema claro y oscuro para todas las pantallas y
+recordar la preferencia local del analista.
+
 # 6. Especificación funcional de extracción RIPS
 
 ## 6.1. Categorías de tecnologías
@@ -616,59 +671,3 @@ No forman parte de estos tres entregables:
 - [backend/homologacion.py](https://github.com/SrAlbertoG/Automatizacion_BusquedaContratos/blob/master/backend/homologacion.py)
 - [backend/monitorDeCostos.py](https://github.com/SrAlbertoG/Automatizacion_BusquedaContratos/blob/master/backend/monitorDeCostos.py)
 
-
-
-## 5.4. Reglas obligatorias de elegibilidad y deduplicación
-
-Para las facturas provenientes de `BiPagosFPR`, únicamente se tendrán en
-cuenta los registros con estos estados:
-
-- **Finalizada:** la factura se incluye.
-- **Para respuesta prestador:** la factura se incluye solamente cuando
-  `ValorPagarrad` no sea nulo y su valor numérico sea diferente de cero.
-
-Los demás estados se descartan. Para el estado Para respuesta prestador también
-se descartan los valores nulos, cero o que no puedan convertirse a un número.
-
-Antes de presentar facturas de SQL Server, el sistema debe verificar que no
-exista la misma factura en Base Montos Fijos. La comparación usa la clave
-natural normalizada formada por NIT, contrato y número completo de factura
-(`Prefijo + Factura`). La regla debe aplicarse en el conteo, paginación y
-detalle, no únicamente en la primera página.
-
-Si el archivo de costos fijos no está disponible, el sistema debe advertirlo
-explícitamente porque no puede garantizar la exclusión de duplicados contra
-esa fuente.
-
-## 5.5. Criterios de búsqueda y selección de transacciones
-
-La búsqueda de transacciones parte de las facturas seleccionadas y conserva la
-condición `rat_Activo = 'Activo'`. Además, debe aplicar únicamente los
-parámetros que el analista utilizó para buscar facturas:
-
-- Si se escribió NIT, comparar con `rat_NumeroIdentificacion`.
-- Si se escribió contrato, comparar con `rat_NumeroContrato`.
-- Si se escribió número o fragmento de factura, comparar con
-  `rat_NumeroFactura`.
-- Si se utilizaron varios criterios, deben cumplirse todos.
-- Los criterios que quedaron vacíos no deben agregarse al filtro.
-
-La interfaz preseleccionará las transacciones que cumplan las reglas en todas
-las páginas. La preparación de extracción volverá a comprobar tanto la
-actividad como la relación de cada transacción con las facturas y los filtros
-originales.
-
-## 5.6. Comportamiento de la interfaz
-
-Los filtros de contrato y NIT deberán ser campos de texto con sugerencias
-dinámicas que se actualizan al escribir. El usuario podrá conservar texto libre
-sin estar obligado a elegir una opción del catálogo.
-
-La selección global de facturas y transacciones debe actuar sobre todos los
-resultados de la búsqueda, sin repetir la acción al cambiar de página. La
-aplicación admitirá hasta 1.000 facturas y 1.000 transacciones por preparación;
-si se supera el límite, se informará al usuario y no se aceptará una selección
-parcial como si fuera total.
-
-La aplicación deberá ofrecer tema claro y oscuro para todas las pantallas y
-recordar la preferencia local del analista.
