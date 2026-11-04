@@ -11,7 +11,13 @@ class SqlServerTransactionRepository:
     TABLE = "dbo.RIPSArchivoTransaccion"
 
     @staticmethod
-    def _build_filter(invoice_keys: list[dict]) -> tuple[str, tuple]:
+    def _build_filter(
+        invoice_keys: list[dict],
+        *,
+        contract: str | None = None,
+        provider_nit: str | None = None,
+        invoice: str | None = None,
+    ) -> tuple[str, tuple]:
         if not invoice_keys:
             raise AppError(
                 "invoice_selection_required",
@@ -19,21 +25,38 @@ class SqlServerTransactionRepository:
                 400,
             )
 
-        if len(invoice_keys) > 250:
+        if len(invoice_keys) > 1000:
             raise AppError(
                 "too_many_invoices",
-                "Selecciona máximo 250 facturas por consulta de transacciones.",
+                "Selecciona máximo 1000 facturas por consulta de transacciones.",
                 400,
             )
 
-        # Se conserva el criterio de la automatización anterior: el vínculo
-        # inicial se realiza por número completo de factura. Contrato y NIT se
-        # devuelven desde RIPSArchivoTransaccion como datos propios del registro;
-        # no se usan como filtros para no descartar transacciones históricamente
-        # asociadas a una factura cuyo contrato fue corregido posteriormente.
+        # La selección limita el conjunto de facturas. Además, se aplican
+        # únicamente los criterios que el analista utilizó en la búsqueda de
+        # facturas, para evitar asociar transacciones de otro NIT o contrato.
         invoice_numbers = list(dict.fromkeys(item["invoice"] for item in invoice_keys))
         expressions = ["rat_NumeroFactura = ?" for _ in invoice_numbers]
-        return "(" + " OR ".join(expressions) + ")", tuple(invoice_numbers)
+        clauses = ["(" + " OR ".join(expressions) + ")"]
+        params: list[object] = list(invoice_numbers)
+
+        if contract and contract.strip():
+            clauses.append(
+                "LTRIM(RTRIM(CONVERT(varchar(100), rat_NumeroContrato))) = ?"
+            )
+            params.append(contract.strip())
+        if provider_nit and provider_nit.strip():
+            clauses.append(
+                "LTRIM(RTRIM(CONVERT(varchar(50), rat_NumeroIdentificacion))) = ?"
+            )
+            params.append(provider_nit.strip())
+        if invoice and invoice.strip():
+            clauses.append(
+                "LTRIM(RTRIM(CONVERT(varchar(100), rat_NumeroFactura))) LIKE ?"
+            )
+            params.append(f"%{invoice.strip()}%")
+
+        return " AND ".join(clauses), tuple(params)
 
     @staticmethod
     def _fetch_all(connection, query: str, params: tuple) -> list[dict]:
@@ -51,8 +74,21 @@ class SqlServerTransactionRepository:
         finally:
             cursor.close()
 
-    def count(self, connection, invoice_keys: list[dict]) -> int:
-        invoice_filter, params = self._build_filter(invoice_keys)
+    def count(
+        self,
+        connection,
+        invoice_keys: list[dict],
+        *,
+        contract: str | None = None,
+        provider_nit: str | None = None,
+        invoice: str | None = None,
+    ) -> int:
+        invoice_filter, params = self._build_filter(
+            invoice_keys,
+            contract=contract,
+            provider_nit=provider_nit,
+            invoice=invoice,
+        )
         query = f"""
             SELECT COUNT(DISTINCT rat_Id) AS total
             FROM {self.TABLE}
@@ -66,6 +102,10 @@ class SqlServerTransactionRepository:
         connection,
         invoice_keys: list[dict],
         transaction_ids: list[str],
+        *,
+        contract: str | None = None,
+        provider_nit: str | None = None,
+        invoice: str | None = None,
     ) -> list[dict]:
         """Valida que los IDs elegidos sigan activos y pertenezcan a las facturas."""
         if not transaction_ids:
@@ -81,7 +121,12 @@ class SqlServerTransactionRepository:
                 400,
             )
 
-        invoice_filter, invoice_params = self._build_filter(invoice_keys)
+        invoice_filter, invoice_params = self._build_filter(
+            invoice_keys,
+            contract=contract,
+            provider_nit=provider_nit,
+            invoice=invoice,
+        )
         unique_ids = list(dict.fromkeys(transaction_ids))
         id_placeholders = ", ".join("?" for _ in unique_ids)
         query = f"""
@@ -108,8 +153,17 @@ class SqlServerTransactionRepository:
         invoice_keys: list[dict],
         offset: int,
         limit: int,
+        *,
+        contract: str | None = None,
+        provider_nit: str | None = None,
+        invoice: str | None = None,
     ) -> list[dict]:
-        invoice_filter, params = self._build_filter(invoice_keys)
+        invoice_filter, params = self._build_filter(
+            invoice_keys,
+            contract=contract,
+            provider_nit=provider_nit,
+            invoice=invoice,
+        )
         query = f"""
             SELECT DISTINCT
                 rat_Id AS id,
