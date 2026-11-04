@@ -83,10 +83,16 @@ class InvoiceService:
             if exc.code != "fixed_cost_file_missing":
                 raise
             fixed_file_missing = True
+            omitted_sources = []
+            if use_base:
+                omitted_sources.append("los periodos históricos")
+            if use_sql:
+                omitted_sources.append("las facturas FPR")
+            omitted_description = " y ".join(omitted_sources)
             warnings.append(
-                "No se encontró Base Montos Fijos. Se omitieron tanto los "
-                "periodos históricos como las facturas FPR para evitar cargar "
-                "duplicados que no pueden verificarse."
+                "No se encontró Base Montos Fijos. Se omitieron "
+                f"{omitted_description} para evitar cargar duplicados "
+                "que no pueden verificarse."
             )
 
         with self.auth_service.connection() as connection:
