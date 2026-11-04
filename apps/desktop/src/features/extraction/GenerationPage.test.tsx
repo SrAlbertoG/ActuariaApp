@@ -58,6 +58,9 @@ function mockApi() {
       if (url.includes("/contracts")) {
         return json([{ value: "CNT-2026-9", label: "CNT-2026-9" }]);
       }
+      if (url.includes("/providers")) {
+        return json([{ value: "900123456", label: "Prestador de prueba" }]);
+      }
       if (url.includes("/extraction/prepare")) {
         return json({
           status: "prepared",
@@ -112,5 +115,111 @@ describe("GenerationPage", () => {
 
     expect(await screen.findByText("Selección preparada")).not.toBeNull();
     expect(screen.getByText(/La extracción aún no se ha iniciado/)).not.toBeNull();
+  });
+});
+
+
+describe("filtros y selección global", () => {
+  it("permite escribir un contrato y elegir una sugerencia con el teclado", async () => {
+    mockApi();
+
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <GenerationPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    const contractInput = screen.getByRole("combobox", { name: "Contrato" });
+    fireEvent.focus(contractInput);
+    fireEvent.change(contractInput, { target: { value: "CNT" } });
+
+    const option = await screen.findByRole("option", { name: "CNT-2026-9" });
+    expect(option).not.toBeNull();
+
+    fireEvent.keyDown(contractInput, { key: "ArrowDown" });
+    fireEvent.keyDown(contractInput, { key: "Enter" });
+
+    expect((contractInput as HTMLInputElement).value).toBe("CNT-2026-9");
+  });
+
+  it("selecciona todas las facturas encontradas aunque no estén en la página visible", async () => {
+    const invoices = Array.from({ length: 26 }, (_, index) => ({
+      ...invoicePage.items[0],
+      id: "invoice-" + (index + 1),
+      invoice: "FE" + String(index + 1).padStart(3, "0"),
+    }));
+    const transactions = invoices.map((invoice, index) => ({
+      id: String(2000 + index),
+      invoice: invoice.invoice,
+      contract: invoice.contract,
+      nit_provider: invoice.nit_provider,
+      provider_code: "12345",
+      rips_date: "2026-08-12",
+      filing_date: "2026-08-20",
+    }));
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((input: string | URL) => {
+        const url = String(input);
+        const json = (data: unknown) =>
+          Promise.resolve(
+            new Response(JSON.stringify(data), {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            }),
+          );
+
+        if (url.includes("/contracts")) return json([]);
+        if (url.includes("/providers")) return json([]);
+        if (url.includes("/transactions/search")) {
+          return json({
+            items: transactions,
+            total: transactions.length,
+            page: 1,
+            page_size: 100,
+          });
+        }
+        if (url.includes("/invoices") && url.includes("page_size=100")) {
+          return json({
+            items: invoices,
+            total: invoices.length,
+            page: 1,
+            page_size: 100,
+            warnings: [],
+          });
+        }
+        if (url.includes("/invoices")) {
+          return json({
+            items: invoices.slice(0, 25),
+            total: invoices.length,
+            page: 1,
+            page_size: 25,
+            warnings: [],
+          });
+        }
+        return json({});
+      }),
+    );
+
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <GenerationPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Buscar facturas" }));
+    await screen.findByLabelText("Seleccionar factura FE001");
+
+    fireEvent.click(screen.getByRole("button", { name: "Seleccionar todas" }));
+
+    expect(await screen.findByText("26 seleccionadas")).not.toBeNull();
+    expect(
+      await screen.findByText("26 transacciones seleccionadas"),
+    ).not.toBeNull();
   });
 });
