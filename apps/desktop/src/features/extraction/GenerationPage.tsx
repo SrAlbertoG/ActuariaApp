@@ -247,10 +247,9 @@ export function GenerationPage() {
   });
 
   const providers = useQuery({
-    queryKey: ["invoice-providers", filters.contract],
-    // Se consulta al entrar y cuando cambia el contrato, nunca por cada letra
-    // del NIT. Así se conserva el filtro de prestadores asociado al contrato.
-    queryFn: () => extractionApi.getProviders(filters.contract.trim() || undefined),
+    queryKey: ["invoice-providers"],
+    // Catálogo completo al entrar: el NIT se filtra localmente mientras se escribe.
+    queryFn: () => extractionApi.getProviders(),
     staleTime: 5 * 60 * 1000,
     refetchOnMount: true,
     refetchOnWindowFocus: false,
