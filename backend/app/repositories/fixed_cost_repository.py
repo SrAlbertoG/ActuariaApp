@@ -182,6 +182,35 @@ class FixedCostRepository:
         return _read_cached_file(str(self.file_path.resolve()), modified_ns).copy()
 
     @staticmethod
+    def invoice_keys(self) -> set[tuple[str, str, str]]:
+        """Devuelve las claves naturales de facturas incluidas en Montos Fijos.
+
+        La tupla se ordena como (NIT, contrato, número de factura), igual que
+        la clave que se utiliza para identificar una factura en la interfaz.
+        """
+        frame = self._load()
+        return set(
+            zip(
+                frame["nit_provider"].astype(str),
+                frame["contract"].astype(str),
+                frame["invoice"].astype(str),
+            )
+        )
+
+    def contains_invoice(
+        self,
+        invoice: str,
+        provider_nit: str,
+        contract: str,
+    ) -> bool:
+        """Indica si la factura ya existe en la fuente de costos fijos."""
+        return (
+            provider_nit.strip(),
+            contract.strip(),
+            invoice.strip(),
+        ) in self.invoice_keys()
+
+    @staticmethod
     def _filter(
         frame: pd.DataFrame,
         *,
