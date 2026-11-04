@@ -482,6 +482,60 @@ Los servicios utilizarán repositorios para acceder a SQL Server o a las fuentes
 
 ---
 
+## 6.8. Reglas implementadas para elegibilidad, duplicados y selección
+
+### Elegibilidad de facturas FPR
+
+La consulta a `BiPagosFPR` deberá restringir los registros a:
+
+- `EstadoFacturarad = 'Finalizada'`; o
+- `EstadoFacturarad = 'Para respuesta prestador'` cuando
+  `ValorPagarrad` no sea nulo, pueda convertirse a decimal y sea distinto
+  de cero.
+
+Los estados se comparan después de quitar espacios externos. Para el segundo
+estado, valores nulos, cero y no numéricos se excluyen.
+
+### Deduplicación contra Base Montos Fijos
+
+El repositorio Excel normaliza los identificadores y expone las claves
+`(NIT, contrato, Prefijo + Factura)`. El repositorio FPR carga esas claves en
+una tabla temporal de SQL Server y usa `NOT EXISTS` para excluir coincidencias.
+La misma exclusión se aplica al conteo, a cada página y a la consulta de detalle.
+No se debe deduplicar solo por número de factura, porque puede repetirse entre
+prestadores o contratos.
+
+Si no se encuentra el archivo, la API devuelve una advertencia que informa
+tanto la indisponibilidad de los periodos históricos como la imposibilidad de
+garantizar la deduplicación de FPR contra el Excel.
+
+### Filtros de transacciones
+
+`POST /api/v1/transactions/search` recibe `invoice_ids` y, opcionalmente,
+`provider_nit`, `contract` e `invoice`. El backend construye filtros
+parametrizados solo para los criterios no vacíos, sobre
+`rat_NumeroIdentificacion`, `rat_NumeroContrato` y
+`rat_NumeroFactura`, respectivamente. Siempre conserva el filtro por números
+de factura seleccionados y `rat_Activo = 'Activo'`.
+
+`POST /api/v1/extraction/prepare` recibe los mismos criterios y los vuelve a
+aplicar al validar los identificadores. De esta forma, no se confía únicamente
+en la selección que mantiene React.
+
+### Interfaz
+
+- Los campos de contrato y NIT son inputs de texto libre con sugerencias
+  remotas que se filtran mientras el analista escribe.
+- Seleccionar todas las facturas recupera todas las páginas del conjunto
+  actual, hasta un máximo de 1.000.
+- La consulta de transacciones carga todas las coincidencias hasta un máximo
+  de 1.000; se preseleccionan todas las filas elegibles y la paginación se
+  realiza en el cliente para conservar la selección al cambiar de página.
+- Si el resultado supera el máximo, se informa y se exige refinar filtros; no
+  se presenta una selección parcial como completa.
+- El tema claro/oscuro es global, se aplica mediante una clase raíz y se
+  persiste en el almacenamiento local del frontend.
+
 # 7. Entregable 3: Versión final de extracción RIPS sin homologación y exportación
 
 ## 7.1. Objetivo
@@ -838,6 +892,15 @@ En la construcción de Windows se utilizará PyInstaller para generar el ejecuta
 - Facturas sin transacciones.
 - Resultados paginados.
 - Volúmenes grandes de información.
+- Facturas FPR con estado Finalizada.
+- Facturas FPR Para respuesta prestador con ValorPagarrad nulo, cero, no numérico o distinto de cero.
+- Exclusión de duplicados FPR frente a Base Montos Fijos por NIT, contrato y número completo de factura.
+- Búsqueda de transacciones usando únicamente los filtros originales suministrados por el analista.
+- Rechazo en preparación de transacciones inactivas o que no cumplan los filtros originales.
+- Selección global de facturas y transacciones entre páginas.
+- Preselección automática de transacciones coincidentes.
+- Sugerencias en los campos de contrato y NIT.
+- Persistencia de la preferencia de tema claro/oscuro.
 - Validación de consistencia entre interfaz y SQL Server.
 
 ## 11.3. Pruebas del entregable 3
