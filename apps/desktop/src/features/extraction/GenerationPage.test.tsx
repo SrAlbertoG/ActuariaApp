@@ -221,5 +221,11 @@ describe("filtros y selección global", () => {
     expect(
       await screen.findByText("26 transacciones seleccionadas"),
     ).not.toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Quitar selección global" }));
+    expect(await screen.findByText("0 transacciones seleccionadas")).not.toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Seleccionar todas las transacciones" }));
+    expect(await screen.findByText("26 transacciones seleccionadas")).not.toBeNull();
   });
 });
