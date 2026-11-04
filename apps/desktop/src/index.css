@@ -1,1 +1,38 @@
 @import "tailwindcss";
+
+/* Paleta contextual: las clases Tailwind existentes cambian de valor
+   cuando ThemeProvider agrega .dark al elemento raíz. */
+.dark {
+  color-scheme: dark;
+  --color-white: #111827;
+  --color-slate-50: #0b1220;
+  --color-slate-100: #111827;
+  --color-slate-200: #1f2937;
+  --color-slate-300: #334155;
+  --color-slate-400: #64748b;
+  --color-slate-500: #94a3b8;
+  --color-slate-600: #cbd5e1;
+  --color-slate-700: #e2e8f0;
+  --color-slate-800: #f1f5f9;
+  --color-slate-900: #f8fafc;
+  --color-blue-50: #172554;
+  --color-blue-100: #1e3a8a;
+  --color-blue-200: #1e40af;
+  --color-emerald-50: #052e24;
+  --color-violet-50: #2e1065;
+  --color-amber-50: #451a03;
+  --color-amber-100: #78350f;
+  --color-red-50: #450a0a;
+  --color-red-100: #7f1d1d;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  background-color: var(--color-slate-50);
+  color: var(--color-slate-800);
+}
