@@ -289,10 +289,10 @@ export function GenerationPage() {
   // La consulta recupera los registros de todas las páginas. Preselecciona
   // los que cumplen los filtros originales y conserva los cambios manuales.
   useEffect(() => {
-    if (!transactions.data?.items.length) return;
+    if (!allTransactionRows.length) return;
     setSelectedTransactions((current) => {
       const next = { ...current };
-      for (const transaction of transactions.data.items) {
+      for (const transaction of allTransactionRows) {
         if (
           Object.keys(next).length < MAX_SELECTED_TRANSACTIONS ||
           next[transaction.id]
@@ -302,7 +302,7 @@ export function GenerationPage() {
       }
       return next;
     });
-  }, [transactions.data]);
+  }, [allTransactionRows]);
 
   const preparation = useMutation({
     mutationFn: () =>
@@ -562,7 +562,8 @@ export function GenerationPage() {
                     placeholder="Escribe para buscar o ingresar un contrato"
                     value={filters.contract}
                     onFocus={() => setShowContractSuggestions(true)}
-                    onKeyDown={(event) => {
+                    onBlur={() => setShowContractSuggestions(false)}
+                    onKeyDown={(event) => {}
                       if (event.key === "Escape") setShowContractSuggestions(false);
                     }}
                     onChange={(event) =>
@@ -627,7 +628,8 @@ export function GenerationPage() {
                     placeholder="Escribe NIT para buscar"
                     value={filters.provider_nit}
                     onFocus={() => setShowProviderSuggestions(true)}
-                    onKeyDown={(event) => {
+                    onBlur={() => setShowProviderSuggestions(false)}
+                    onKeyDown={(event) => {}
                       if (event.key === "Escape") setShowProviderSuggestions(false);
                     }}
                     onChange={(event) =>
