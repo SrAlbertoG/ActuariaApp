@@ -541,21 +541,59 @@ export function GenerationPage() {
                 <label className={labelClass} htmlFor="contract">
                   Contrato
                 </label>
-                <select
-                  id="contract"
-                  className={inputClass}
-                  value={filters.contract}
-                  onChange={(event) =>
-                    handleFilterChange("contract", event.target.value)
-                  }
-                >
-                  <option value="">Todos los contratos</option>
-                  {contracts.data?.map((item) => (
-                    <option key={item.value} value={item.value}>
-                      {item.label}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <input
+                    id="contract"
+                    role="combobox"
+                    aria-autocomplete="list"
+                    aria-expanded={showContractSuggestions}
+                    aria-controls="contract-suggestions"
+                    autoComplete="off"
+                    className={inputClass}
+                    placeholder="Escribe para buscar o ingresar un contrato"
+                    value={filters.contract}
+                    onFocus={() => setShowContractSuggestions(true)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Escape") setShowContractSuggestions(false);
+                    }}
+                    onChange={(event) =>
+                      handleFilterChange("contract", event.target.value)
+                    }
+                  />
+                  {showContractSuggestions && filters.contract.trim() && (
+                    <ul
+                      id="contract-suggestions"
+                      role="listbox"
+                      className="absolute z-30 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+                    >
+                      {contracts.isPending ? (
+                        <li className="px-3 py-2 text-xs text-slate-500">
+                          Buscando contratos…
+                        </li>
+                      ) : contracts.data?.length ? (
+                        contracts.data.slice(0, 12).map((item) => (
+                          <li key={item.value} role="option" aria-selected={filters.contract === item.value}>
+                            <button
+                              type="button"
+                              className="w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100"
+                              onMouseDown={(event) => event.preventDefault()}
+                              onClick={() => {
+                                handleFilterChange("contract", item.value);
+                                setShowContractSuggestions(false);
+                              }}
+                            >
+                              {item.label}
+                            </button>
+                          </li>
+                        ))
+                      ) : (
+                        <li className="px-3 py-2 text-xs text-slate-500">
+                          Sin coincidencias. Puedes conservar el texto escrito.
+                        </li>
+                      )}
+                    </ul>
+                  )}
+                </div>
                 {contracts.isError && (
                   <p className="mt-1 text-xs text-red-600">
                     No fue posible cargar contratos.
@@ -567,16 +605,61 @@ export function GenerationPage() {
                 <label className={labelClass} htmlFor="provider">
                   NIT del prestador
                 </label>
-                <input
-                  id="provider"
-                  inputMode="numeric"
-                  className={inputClass}
-                  placeholder="Ej. 900123456"
-                  value={filters.provider_nit}
-                  onChange={(event) =>
-                    handleFilterChange("provider_nit", event.target.value)
-                  }
-                />
+                <div className="relative">
+                  <input
+                    id="provider"
+                    role="combobox"
+                    aria-autocomplete="list"
+                    aria-expanded={showProviderSuggestions}
+                    aria-controls="provider-suggestions"
+                    autoComplete="off"
+                    inputMode="numeric"
+                    className={inputClass}
+                    placeholder="Escribe NIT para buscar"
+                    value={filters.provider_nit}
+                    onFocus={() => setShowProviderSuggestions(true)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Escape") setShowProviderSuggestions(false);
+                    }}
+                    onChange={(event) =>
+                      handleFilterChange("provider_nit", event.target.value)
+                    }
+                  />
+                  {showProviderSuggestions && filters.provider_nit.trim() && (
+                    <ul
+                      id="provider-suggestions"
+                      role="listbox"
+                      className="absolute z-30 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+                    >
+                      {providers.isPending ? (
+                        <li className="px-3 py-2 text-xs text-slate-500">
+                          Buscando prestadores…
+                        </li>
+                      ) : providers.data?.length ? (
+                        providers.data.slice(0, 12).map((item) => (
+                          <li key={item.value} role="option" aria-selected={filters.provider_nit === item.value}>
+                            <button
+                              type="button"
+                              className="w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100"
+                              onMouseDown={(event) => event.preventDefault()}
+                              onClick={() => {
+                                handleFilterChange("provider_nit", item.value);
+                                setShowProviderSuggestions(false);
+                              }}
+                            >
+                              <span className="block font-medium">{item.value}</span>
+                              <span className="block text-xs text-slate-500">{item.label}</span>
+                            </button>
+                          </li>
+                        ))
+                      ) : (
+                        <li className="px-3 py-2 text-xs text-slate-500">
+                          Sin coincidencias. Puedes conservar el NIT escrito.
+                        </li>
+                      )}
+                    </ul>
+                  )}
+                </div>
               </div>
 
               <div>
@@ -677,13 +760,25 @@ export function GenerationPage() {
                 Selecciona una o varias facturas para consultar sus transacciones.
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
                 {selectedInvoiceCount} seleccionadas
               </span>
               <span className="text-xs text-slate-500">
                 {invoices.data?.total.toLocaleString("es-CO") ?? "—"} resultados
               </span>
+              <button
+                type="button"
+                disabled={!invoices.data?.total || isSelectingAllInvoices}
+                onClick={() => void toggleAllInvoices(!allInvoicesSelected)}
+                className="rounded-lg border border-blue-200 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isSelectingAllInvoices
+                  ? "Seleccionando…"
+                  : allInvoicesSelected
+                    ? "Quitar selección global"
+                    : "Seleccionar todas"}
+              </button>
             </div>
           </div>
 
@@ -716,10 +811,11 @@ export function GenerationPage() {
                       <th className="w-12 px-4 py-3">
                         <input
                           type="checkbox"
-                          aria-label="Seleccionar facturas visibles"
-                          checked={allVisibleInvoicesSelected}
+                          aria-label="Seleccionar todas las facturas encontradas"
+                          checked={allInvoicesSelected}
+                          disabled={isSelectingAllInvoices}
                           onChange={(event) =>
-                            toggleVisibleInvoices(event.target.checked)
+                            void toggleAllInvoices(event.target.checked)
                           }
                         />
                       </th>
@@ -798,6 +894,11 @@ export function GenerationPage() {
                   por consulta de transacciones.
                 </p>
               )}
+              {selectionError && (
+                <p role="alert" className="px-5 pb-3 text-xs text-red-700">
+                  {selectionError}
+                </p>
+              )}
             </>
           )}
         </section>
@@ -809,7 +910,7 @@ export function GenerationPage() {
                 Transacciones RIPS
               </h2>
               <p className="mt-0.5 text-xs text-slate-500">
-                Registros activos asociados a las facturas seleccionadas.
+                Transacciones activas que coinciden con los filtros originales de búsqueda.
               </p>
             </div>
             <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
@@ -852,10 +953,10 @@ export function GenerationPage() {
                       <th className="w-12 px-4 py-3">
                         <input
                           type="checkbox"
-                          aria-label="Seleccionar transacciones visibles"
-                          checked={allVisibleTransactionsSelected}
+                          aria-label="Seleccionar todas las transacciones encontradas"
+                          checked={allTransactionsSelected}
                           onChange={(event) =>
-                            toggleVisibleTransactions(event.target.checked)
+                            toggleAllTransactions(event.target.checked)
                           }
                         />
                       </th>
@@ -920,6 +1021,11 @@ export function GenerationPage() {
                 total={transactions.data.total}
                 onPageChange={setTransactionPage}
               />
+              {selectionError && (
+                <p role="alert" className="px-5 pb-3 text-xs text-red-700">
+                  {selectionError}
+                </p>
+              )}
             </>
           )}
         </section>
