@@ -102,9 +102,9 @@ describe("GenerationPage", () => {
     const transactionCheckbox = await screen.findByLabelText(
       "Seleccionar transacción 1001",
     );
-    fireEvent.click(transactionCheckbox);
+    expect((transactionCheckbox as HTMLInputElement).checked).toBe(true);
 
-    expect(screen.getByText("1 transacciones seleccionadas")).not.toBeNull();
+    expect(await screen.findByText("1 transacciones seleccionadas")).not.toBeNull();
 
     fireEvent.click(
       screen.getByRole("button", { name: "Confirmar selección" }),
