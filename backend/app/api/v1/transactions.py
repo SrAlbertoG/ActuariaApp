@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends, Query
 
 from app.api.deps import require_sql_connection
-from app.schemas.invoices import TransactionPage, TransactionSearchRequest
+from app.schemas.invoices import TransactionDataset, TransactionDatasetRequest, TransactionPage, TransactionSearchRequest
 from app.services.auth_service import AuthService
 from app.services.transaction_service import TransactionService
 
@@ -32,6 +32,21 @@ def search_transactions(
         page=body.page,
         page_size=body.page_size,
     )
+
+
+@router.post("/transactions/dataset", response_model=TransactionDataset)
+def search_transaction_dataset(
+    body: TransactionDatasetRequest,
+    service: TransactionService = Depends(get_transaction_service),
+):
+    """Devuelve todas las transacciones coincidentes para paginación local."""
+    result = service.search_dataset(
+        body.invoice_ids,
+        contract=body.contract,
+        provider_nit=body.provider_nit,
+        invoice=body.invoice,
+    )
+    return TransactionDataset(items=result.items, total=result.total)
 
 
 @router.get("/transactions", response_model=TransactionPage)
