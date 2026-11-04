@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 
+import { ThemeToggle } from "../theme/ThemeToggle";
 import {
   useForgetCredentials,
   useLogout,
@@ -65,6 +66,7 @@ export function HomePage() {
                   : "Olvidar credenciales guardadas"}
               </button>
             )}
+            <ThemeToggle />
             <button
               type="button"
               onClick={() => logout.mutate()}
