@@ -104,7 +104,7 @@ Para los registros provenientes de `BiPagosFPR`, la consulta solo incluye:
    convertido a un valor numérico distinto de cero.
 
 Por tanto, se excluyen los demás estados, los valores nulos de
-`ValorPagarrad`, los valores iguales a cero y los valores no numéricos para
+`ValorPagar`, los valores iguales a cero y los valores no numéricos para
 el estado `Para respuesta prestador`. Los espacios al inicio o al final del
 estado se normalizan antes de compararlo.
 
