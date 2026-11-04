@@ -73,6 +73,8 @@ class SqlServerInvoiceRepository:
                 """
             )
             if excluded_keys:
+                # PyODBC agrupa la inserción de claves para reducir viajes ODBC.
+                cursor.fast_executemany = True
                 cursor.executemany(
                     """
                     INSERT INTO #FixedCostInvoiceKeys
