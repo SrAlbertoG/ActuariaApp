@@ -32,4 +32,10 @@ def prepare_extraction(
     service: ExtractionPreparationService = Depends(get_preparation_service),
 ):
     """Valida facturas y transacciones seleccionadas sin iniciar la extracción."""
-    return service.prepare(body.invoice_ids, body.transaction_ids)
+    return service.prepare(
+        body.invoice_ids,
+        body.transaction_ids,
+        contract=body.contract,
+        provider_nit=body.provider_nit,
+        invoice=body.invoice,
+    )
