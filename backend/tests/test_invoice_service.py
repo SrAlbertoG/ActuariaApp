@@ -150,3 +150,56 @@ def test_search_uses_only_sql_for_periods_after_cutoff(monkeypatch):
     assert result.total == 2
     assert len(result.items) == 2
     assert all(item.source == "sql_server" for item in result.items)
+
+
+class MissingFixedRepository:
+    def invoice_keys(self):
+        from app.core.errors import AppError
+
+        raise AppError(
+            "fixed_cost_file_missing",
+            "No se encontró Base Montos Fijos.",
+            503,
+        )
+
+    def count(self, **filters):
+        raise AssertionError("No se deben consultar periodos históricos sin Excel.")
+
+
+class SqlRepositoryMustNotQuery:
+    def __init__(self, period_field, cutoff_date):
+        self.period_field = period_field
+        self.cutoff_date = cutoff_date
+
+    def count(self, connection, **filters):
+        raise AssertionError("No se deben cargar facturas FPR sin validar duplicados.")
+
+    def search(self, connection, offset, limit, **filters):
+        raise AssertionError("No se deben cargar facturas FPR sin validar duplicados.")
+
+
+def test_search_fails_closed_when_fixed_cost_file_is_missing(monkeypatch):
+    settings = SimpleNamespace(
+        invoice_source_cutoff=date(2026, 9, 1),
+        fixed_costs_file=Path("missing.xlsx"),
+        fpr_period_field="FechaFactura",
+    )
+    monkeypatch.setattr(invoice_service, "get_settings", lambda: settings)
+
+    service = invoice_service.InvoiceService(FakeAuthService())
+    service.fixed_repository = MissingFixedRepository()
+    service.sql_repository = SqlRepositoryMustNotQuery(
+        "FechaFactura",
+        date(2026, 9, 1),
+    )
+
+    result = service.search(
+        start_date=date(2026, 9, 1),
+        end_date=date(2026, 9, 30),
+        page=1,
+        page_size=25,
+    )
+
+    assert result.total == 0
+    assert result.items == []
+    assert any("Se omitieron" in warning for warning in result.warnings)
