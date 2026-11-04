@@ -46,7 +46,7 @@ def search_transaction_dataset(
         provider_nit=body.provider_nit,
         invoice=body.invoice,
     )
-    return TransactionDataset(items=result.items, total=result.total)
+    return TransactionDataset(**result)
 
 
 @router.get("/transactions", response_model=TransactionPage)
