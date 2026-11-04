@@ -502,8 +502,10 @@ El repositorio Excel normaliza los identificadores y expone las claves
 `(NIT, contrato, Prefijo + Factura)`. El repositorio FPR carga esas claves en
 una tabla temporal de SQL Server y usa `NOT EXISTS` para excluir coincidencias.
 La misma exclusión se aplica al conteo, a cada página y a la consulta de detalle.
-No se debe deduplicar solo por número de factura, porque puede repetirse entre
-prestadores o contratos.
+Las claves completas también se conservan cuando `MesdeServicio` está vacío o
+no es válido; esas filas no se exponen como facturas históricas, pero siguen
+participando en el bloqueo de duplicados. No se debe deduplicar solo por número
+de factura, porque puede repetirse entre prestadores o contratos.
 
 Si no se encuentra el archivo, la API devuelve una advertencia, omite
 los periodos históricos y no ejecuta la consulta de facturas FPR. Esta política
