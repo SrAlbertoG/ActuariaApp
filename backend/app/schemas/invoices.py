@@ -93,3 +93,18 @@ class ExtractionPreparationRead(BaseModel):
     transaction_count: int
     contracts: list[str]
     providers: list[str]
+
+
+class InvoiceDataset(BaseModel):
+    """Conjunto completo de facturas para paginación local en el frontend."""
+
+    items: list[InvoiceRead]
+    total: int
+    warnings: list[str] = Field(default_factory=list)
+
+
+class TransactionDataset(BaseModel):
+    """Conjunto completo de transacciones para paginación local en el frontend."""
+
+    items: list[TransactionRead]
+    total: int
