@@ -65,18 +65,72 @@ end_date, page y page_size.
 
 El endpoint POST recibe JSON con invoice_ids, page y page_size. Se usa
 para selecciones múltiples y evita colocar cientos de identificadores en la URL.
-La selección admite hasta 250 facturas por consulta y cada página devuelve
-hasta 100 transacciones.
+La selección admite hasta 1.000 facturas y hasta 1.000 transacciones. La API
+devuelve páginas de hasta 100 registros. La interfaz recupera los resultados
+necesarios para aplicar la selección global entre páginas; la tabla de
+transacciones pagina localmente los resultados ya consultados. Si el resultado
+supera los máximos, la interfaz informa al analista y solicita reducir los
+filtros para evitar una selección parcial.
 
-La búsqueda de transacciones conserva la regla del proceso anterior: utiliza
-el número completo de factura como criterio de asociación. NIT y contrato se
-devuelven desde RIPSArchivoTransaccion como atributos del registro. No se
-aplican como filtros adicionales porque la etapa posterior de validación puede
-corregir contratos y el filtro estricto podría excluir transacciones existentes.
+La búsqueda de transacciones siempre se limita a los números completos de las
+facturas seleccionadas y a `rat_Activo = 'Activo'`. Además, recibe únicamente
+los criterios no vacíos que el analista utilizó al buscar las facturas:
+
+- `provider_nit`: compara con `rat_NumeroIdentificacion`.
+- `contract`: compara con `rat_NumeroContrato`.
+- `invoice`: compara con `rat_NumeroFactura` usando el texto de búsqueda.
+
+No se inventan filtros para campos que el analista dejó vacíos. Si la búsqueda
+se hizo solo por NIT, se aplica solo NIT; si se hizo por contrato, solo contrato;
+y si se usaron NIT, contrato y factura, se aplican los tres simultáneamente.
+Estos mismos parámetros se envían a `/extraction/prepare` y se vuelven a
+validar en SQL Server antes de aceptar los identificadores seleccionados.
 
 Las consultas a SQL Server usan parámetros ODBC (?). Los únicos fragmentos
 dinámicos de SQL corresponden a tablas y expresiones de fecha definidas en el
 backend; los campos temporales se validan con una lista permitida.
+
+## Reglas funcionales de elegibilidad de facturas
+
+Para los registros provenientes de `BiPagosFPR`, la consulta solo incluye:
+
+1. `EstadoFacturarad = 'Finalizada'`.
+2. `EstadoFacturarad = 'Para respuesta prestador'` y `ValorPagarrad`
+   convertido a un valor numérico distinto de cero.
+
+Por tanto, se excluyen los demás estados, los valores nulos de
+`ValorPagarrad`, los valores iguales a cero y los valores no numéricos para
+el estado `Para respuesta prestador`. Los espacios al inicio o al final del
+estado se normalizan antes de compararlo.
+
+### Exclusión de duplicados frente a Base Montos Fijos
+
+Antes de devolver facturas SQL, el backend compara cada registro con las claves
+normalizadas del Excel de costos fijos. La clave natural es:
+
+`(NIT, contrato, prefijo + factura)`
+
+Solo se incluyen registros FPR cuya clave no exista en Base Montos Fijos. La
+exclusión se aplica tanto al conteo como a la paginación y al detalle de factura,
+de modo que un duplicado no reaparezca al cambiar de página ni al consultar su
+detalle. Si el archivo no está disponible, el sistema informa que no puede
+aplicar esta regla de deduplicación; no simula que la validación fue exitosa.
+
+### Interfaz y selección
+
+- El control de contratos y el de NIT son campos de texto con sugerencias
+  filtradas a medida que se escribe. El texto libre se conserva aunque el
+  usuario no elija una sugerencia.
+- La casilla y la acción **Seleccionar todas** de facturas trabajan sobre todos
+  los resultados de la búsqueda, no solo la página visible.
+- Las transacciones que cumplen los criterios de búsqueda se preseleccionan
+  automáticamente en todas las páginas. El analista puede desmarcar registros
+  individuales o usar el control global de la tabla.
+- La preferencia de tema claro/oscuro se aplica a toda la aplicación y se
+  conserva localmente entre aperturas.
+- La selección global está limitada a 1.000 facturas y 1.000 transacciones por
+  preparación. Si se supera ese límite, se muestra un mensaje y no se presenta
+  una selección parcial como si estuviera completa.
 
 ## Arquitectura
 
