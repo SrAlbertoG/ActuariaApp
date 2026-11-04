@@ -17,6 +17,9 @@ class TransactionService:
         self,
         invoice_ids: list[str],
         *,
+        contract: str | None = None,
+        provider_nit: str | None = None,
+        invoice: str | None = None,
         page: int = 1,
         page_size: int = 25,
     ) -> TransactionPage:
@@ -41,12 +44,26 @@ class TransactionService:
         offset = (page - 1) * page_size
 
         with self.auth_service.connection() as connection:
-            total = self.repository.count(connection, invoice_keys)
+            active_filters = {
+                key: value
+                for key, value in {
+                    "contract": contract,
+                    "provider_nit": provider_nit,
+                    "invoice": invoice,
+                }.items()
+                if value and value.strip()
+            }
+            total = self.repository.count(
+                connection,
+                invoice_keys,
+                **active_filters,
+            )
             records = self.repository.search(
                 connection,
                 invoice_keys,
                 offset,
                 page_size,
+                **active_filters,
             )
 
         items = [
