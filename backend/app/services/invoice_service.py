@@ -84,23 +84,21 @@ class InvoiceService:
                 raise
             fixed_file_missing = True
             warnings.append(
-                "No se encontró Base Montos Fijos. No se pueden consultar sus "
-                "periodos históricos ni excluir posibles duplicados de FPR."
+                "No se encontró Base Montos Fijos. Se omitieron tanto los "
+                "periodos históricos como las facturas FPR para evitar cargar "
+                "duplicados que no pueden verificarse."
             )
 
         with self.auth_service.connection() as connection:
-            if use_sql:
-                if fixed_invoice_keys:
-                    sql_count = self.sql_repository.count(
-                        connection,
-                        excluded_keys=fixed_invoice_keys,
-                        **sql_filters,
-                    )
-                else:
-                    sql_count = self.sql_repository.count(
-                        connection,
-                        **sql_filters,
-                    )
+            # La deduplicación contra Base Montos Fijos es obligatoria. Si no
+            # se puede leer el archivo, se falla de forma segura y no se cargan
+            # registros SQL cuya unicidad no pueda comprobarse.
+            if use_sql and not fixed_file_missing:
+                sql_count = self.sql_repository.count(
+                    connection,
+                    excluded_keys=fixed_invoice_keys,
+                    **sql_filters,
+                )
 
             if use_base and not fixed_file_missing:
                 base_count = self.fixed_repository.count(**base_filters)
@@ -174,7 +172,12 @@ class InvoiceService:
             except AppError as exc:
                 if exc.code != "fixed_cost_file_missing":
                     raise
-                fixed_invoice_keys = set()
+                raise AppError(
+                    "fixed_cost_file_missing",
+                    "No se puede consultar una factura FPR sin verificar antes "
+                    "que no exista en Base Montos Fijos.",
+                    503,
+                ) from None
 
             with self.auth_service.connection() as connection:
                 record = self.sql_repository.find_one(
@@ -182,11 +185,7 @@ class InvoiceService:
                     key["invoice"],
                     key["nit_provider"],
                     key["contract"],
-                    **(
-                        {"excluded_keys": fixed_invoice_keys}
-                        if fixed_invoice_keys
-                        else {}
-                    ),
+                    excluded_keys=fixed_invoice_keys,
                 )
 
         if record is None:
