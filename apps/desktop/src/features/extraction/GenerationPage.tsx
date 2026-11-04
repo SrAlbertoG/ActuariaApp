@@ -302,7 +302,7 @@ export function GenerationPage() {
       }
       return next;
     });
-  }, [transactions.dataUpdatedAt]);
+  }, [transactions.data]);
 
   const preparation = useMutation({
     mutationFn: () =>
