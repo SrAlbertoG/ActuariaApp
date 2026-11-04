@@ -40,6 +40,73 @@ class SqlServerInvoiceRepository:
         finally:
             cursor.close()
 
+    @staticmethod
+    def _fetch_all_excluding(
+        connection,
+        query: str,
+        params: tuple,
+        excluded_keys: set[tuple[str, str, str]],
+    ) -> list[dict]:
+        """Ejecuta una consulta excluyendo claves cargadas en una tabla temporal."""
+        cursor = connection.cursor()
+        try:
+            cursor.execute(
+                "IF OBJECT_ID('tempdb..#FixedCostInvoiceKeys') IS NOT NULL "
+                "DROP TABLE #FixedCostInvoiceKeys"
+            )
+            cursor.execute(
+                """
+                CREATE TABLE #FixedCostInvoiceKeys (
+                    nit_provider nvarchar(100) COLLATE DATABASE_DEFAULT NOT NULL,
+                    contract nvarchar(100) COLLATE DATABASE_DEFAULT NOT NULL,
+                    invoice nvarchar(100) COLLATE DATABASE_DEFAULT NOT NULL,
+                    PRIMARY KEY (nit_provider, contract, invoice)
+                )
+                """
+            )
+            if excluded_keys:
+                cursor.executemany(
+                    """
+                    INSERT INTO #FixedCostInvoiceKeys
+                        (nit_provider, contract, invoice)
+                    VALUES (?, ?, ?)
+                    """,
+                    list(excluded_keys),
+                )
+            cursor.execute(query, params)
+            columns = [column[0] for column in cursor.description]
+            return [dict(zip(columns, row)) for row in cursor.fetchall()]
+        except pyodbc.Error:
+            raise AppError(
+                "invoice_query_failed",
+                "No fue posible consultar las facturas en SQL Server. Verifica los permisos de lectura.",
+                503,
+            ) from None
+        finally:
+            try:
+                cursor.execute(
+                    "IF OBJECT_ID('tempdb..#FixedCostInvoiceKeys') IS NOT NULL "
+                    "DROP TABLE #FixedCostInvoiceKeys"
+                )
+            except pyodbc.Error:
+                pass
+            cursor.close()
+
+    @staticmethod
+    def _fixed_cost_exclusion_clause() -> str:
+        return """
+            AND NOT EXISTS (
+                SELECT 1
+                FROM #FixedCostInvoiceKeys AS FC
+                WHERE FC.nit_provider =
+                    LTRIM(RTRIM(CONVERT(nvarchar(100), A.NITPrestador)))
+                  AND FC.contract =
+                    LTRIM(RTRIM(CONVERT(nvarchar(100), A.Con_Codigo)))
+                  AND FC.invoice =
+                    LTRIM(RTRIM(CONVERT(nvarchar(100), A.NumeroFactura)))
+            )
+        """
+
     def _where(
         self,
         *,
@@ -57,6 +124,17 @@ class SqlServerInvoiceRepository:
             f"{self.period_expression} >= ?",
         ]
         params: list[object] = [self.cutoff_date]
+        status_expression = (
+            "LTRIM(RTRIM(CONVERT(nvarchar(100), A.EstadoFacturarad)))"
+        )
+        clauses.append(
+            f"({status_expression} = ? OR "
+            f"({status_expression} = ? "
+            "AND A.ValorPagarrad IS NOT NULL "
+            "AND TRY_CONVERT(decimal(38, 4), A.ValorPagarrad) IS NOT NULL "
+            "AND TRY_CONVERT(decimal(38, 4), A.ValorPagarrad) <> 0))"
+        )
+        params.extend(["Finalizada", "Para respuesta prestador"])
 
         if contract:
             clauses.append("A.Con_Codigo = ?")
@@ -83,11 +161,25 @@ class SqlServerInvoiceRepository:
     def count(
         self,
         connection,
+        *,
+        excluded_keys: set[tuple[str, str, str]] | None = None,
         **filters: object,
     ) -> int:
         where, params = self._where(**filters)
-        query = f"SELECT COUNT_BIG(1) AS total FROM {self.TABLE} AS A WHERE {where}"
-        rows = self._fetch_all(connection, query, params)
+        exclusion = (
+            self._fixed_cost_exclusion_clause()
+            if excluded_keys
+            else ""
+        )
+        query = (
+            f"SELECT COUNT_BIG(1) AS total FROM {self.TABLE} AS A "
+            f"WHERE {where}{exclusion}"
+        )
+        rows = (
+            self._fetch_all_excluding(connection, query, params, excluded_keys)
+            if excluded_keys
+            else self._fetch_all(connection, query, params)
+        )
         return int(rows[0]["total"]) if rows else 0
 
     def search(
@@ -95,10 +187,17 @@ class SqlServerInvoiceRepository:
         connection,
         offset: int,
         limit: int,
+        *,
+        excluded_keys: set[tuple[str, str, str]] | None = None,
         **filters: object,
     ) -> list[dict]:
         where, params = self._where(**filters)
         period_expression = self.period_expression
+        exclusion = (
+            self._fixed_cost_exclusion_clause()
+            if excluded_keys
+            else ""
+        )
         query = f"""
             SELECT
                 LTRIM(RTRIM(CONVERT(varchar(100), A.NumeroFactura))) AS invoice,
@@ -118,11 +217,18 @@ class SqlServerInvoiceRepository:
                 WHERE B.NumRadicadoBoxalud = A.fpr_Id
                 ORDER BY B.FechaLiquidacion DESC, B.IdLiquidacion DESC
             ) AS LIQ
-            WHERE {where}
+            WHERE {where}{exclusion}
             ORDER BY period_reference DESC, invoice ASC, A.fpr_Id DESC
             OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
         """
-        return self._fetch_all(connection, query, (*params, offset, limit))
+        query_params = (*params, offset, limit)
+        return (
+            self._fetch_all_excluding(
+                connection, query, query_params, excluded_keys
+            )
+            if excluded_keys
+            else self._fetch_all(connection, query, query_params)
+        )
 
     def find_one(
         self,
@@ -130,11 +236,14 @@ class SqlServerInvoiceRepository:
         invoice: str,
         provider_nit: str,
         contract: str,
+        *,
+        excluded_keys: set[tuple[str, str, str]] | None = None,
     ) -> dict | None:
         records = self.search(
             connection,
             0,
             1,
+            excluded_keys=excluded_keys,
             contract=contract,
             provider_nit=provider_nit,
             invoice=invoice,
