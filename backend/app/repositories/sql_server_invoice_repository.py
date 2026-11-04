@@ -59,8 +59,7 @@ class SqlServerInvoiceRepository:
                 CREATE TABLE #FixedCostInvoiceKeys (
                     nit_provider nvarchar(100) COLLATE DATABASE_DEFAULT NOT NULL,
                     contract nvarchar(100) COLLATE DATABASE_DEFAULT NOT NULL,
-                    invoice nvarchar(100) COLLATE DATABASE_DEFAULT NOT NULL,
-                    PRIMARY KEY (nit_provider, contract, invoice)
+                    invoice nvarchar(100) COLLATE DATABASE_DEFAULT NOT NULL
                 )
                 """
             )
