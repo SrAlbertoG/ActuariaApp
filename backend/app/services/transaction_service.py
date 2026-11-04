@@ -89,3 +89,30 @@ class TransactionService:
             page=page,
             page_size=page_size,
         )
+
+
+    def search_dataset(
+        self,
+        invoice_ids: list[str],
+        *,
+        contract: str | None = None,
+        provider_nit: str | None = None,
+        invoice: str | None = None,
+        max_records: int = 1000,
+    ):
+        """Recupera el conjunto completo de transacciones con límite de seguridad."""
+        result = self.search(
+            invoice_ids,
+            contract=contract,
+            provider_nit=provider_nit,
+            invoice=invoice,
+            page=1,
+            page_size=max_records + 1,
+        )
+        if result.total > max_records:
+            raise AppError(
+                "transaction_result_limit_exceeded",
+                f"La selección genera {result.total} transacciones. Reduce las facturas o filtros para obtener máximo {max_records} registros.",
+                413,
+            )
+        return result
