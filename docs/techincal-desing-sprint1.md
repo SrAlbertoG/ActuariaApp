@@ -505,9 +505,10 @@ La misma exclusión se aplica al conteo, a cada página y a la consulta de detal
 No se debe deduplicar solo por número de factura, porque puede repetirse entre
 prestadores o contratos.
 
-Si no se encuentra el archivo, la API devuelve una advertencia que informa
-tanto la indisponibilidad de los periodos históricos como la imposibilidad de
-garantizar la deduplicación de FPR contra el Excel.
+Si no se encuentra el archivo, la API devuelve una advertencia, omite
+los periodos históricos y no ejecuta la consulta de facturas FPR. Esta política
+de fallo seguro evita exponer registros SQL cuya ausencia de duplicados no se
+pueda comprobar contra el Excel.
 
 ### Filtros de transacciones
 
