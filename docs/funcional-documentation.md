@@ -296,7 +296,7 @@ cuenta los registros con estos estados:
 
 - **Finalizada:** la factura se incluye.
 - **Para respuesta prestador:** la factura se incluye solamente cuando
-  `ValorPagarrad` no sea nulo y su valor numérico sea diferente de cero.
+  `ValorPagar` no sea nulo y su valor numérico sea diferente de cero.
 
 Los demás estados se descartan. Para el estado Para respuesta prestador también
 se descartan los valores nulos, cero o que no puedan convertirse a un número.
