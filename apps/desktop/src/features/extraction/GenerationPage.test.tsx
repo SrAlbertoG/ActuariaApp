@@ -127,11 +127,13 @@ describe("filtros y selección global", () => {
     mockApi();
 
     render(
-      <QueryClientProvider client={new QueryClient()}>
-        <MemoryRouter>
-          <GenerationPage />
-        </MemoryRouter>
-      </QueryClientProvider>,
+      <ThemeProvider>
+        <QueryClientProvider client={new QueryClient()}>
+          <MemoryRouter>
+            <GenerationPage />
+          </MemoryRouter>
+        </QueryClientProvider>
+      </ThemeProvider>,
     );
 
     const contractInput = screen.getByRole("combobox", { name: "Contrato" });
@@ -208,11 +210,13 @@ describe("filtros y selección global", () => {
     );
 
     render(
-      <QueryClientProvider client={new QueryClient()}>
-        <MemoryRouter>
-          <GenerationPage />
-        </MemoryRouter>
-      </QueryClientProvider>,
+      <ThemeProvider>
+        <QueryClientProvider client={new QueryClient()}>
+          <MemoryRouter>
+            <GenerationPage />
+          </MemoryRouter>
+        </QueryClientProvider>
+      </ThemeProvider>,
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Buscar facturas" }));
