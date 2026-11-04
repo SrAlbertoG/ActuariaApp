@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent, type KeyboardEvent } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
@@ -222,6 +222,8 @@ export function GenerationPage() {
   const [isSelectingAllInvoices, setIsSelectingAllInvoices] = useState(false);
   const [showContractSuggestions, setShowContractSuggestions] = useState(false);
   const [showProviderSuggestions, setShowProviderSuggestions] = useState(false);
+  const [activeContractSuggestion, setActiveContractSuggestion] = useState(0);
+  const [activeProviderSuggestion, setActiveProviderSuggestion] = useState(0);
   const [invoicePage, setInvoicePage] = useState(1);
   const [transactionPage, setTransactionPage] = useState(1);
   const [selectedInvoices, setSelectedInvoices] = useState<
@@ -323,8 +325,50 @@ export function GenerationPage() {
       [field]: value,
       ...(field === "contract" ? { provider_nit: "" } : {}),
     }));
+    if (field === "contract") setActiveContractSuggestion(0);
+    if (field === "provider_nit") setActiveProviderSuggestion(0);
     setFilterError(null);
     setSelectionError(null);
+  };
+
+  const handleContractKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    const options = contracts.data?.slice(0, 12) ?? [];
+    if (event.key === "Escape") {
+      setShowContractSuggestions(false);
+      return;
+    }
+    if (!showContractSuggestions || !filters.contract.trim() || !options.length) return;
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setActiveContractSuggestion((current) => Math.min(current + 1, options.length - 1));
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setActiveContractSuggestion((current) => Math.max(current - 1, 0));
+    } else if (event.key === "Enter" && options[activeContractSuggestion]) {
+      event.preventDefault();
+      handleFilterChange("contract", options[activeContractSuggestion].value);
+      setShowContractSuggestions(false);
+    }
+  };
+
+  const handleProviderKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    const options = providers.data?.slice(0, 12) ?? [];
+    if (event.key === "Escape") {
+      setShowProviderSuggestions(false);
+      return;
+    }
+    if (!showProviderSuggestions || !filters.provider_nit.trim() || !options.length) return;
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setActiveProviderSuggestion((current) => Math.min(current + 1, options.length - 1));
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setActiveProviderSuggestion((current) => Math.max(current - 1, 0));
+    } else if (event.key === "Enter" && options[activeProviderSuggestion]) {
+      event.preventDefault();
+      handleFilterChange("provider_nit", options[activeProviderSuggestion].value);
+      setShowProviderSuggestions(false);
+    }
   };
 
   const handleSearch = (event: FormEvent<HTMLFormElement>) => {
@@ -557,15 +601,18 @@ export function GenerationPage() {
                     aria-autocomplete="list"
                     aria-expanded={showContractSuggestions}
                     aria-controls="contract-suggestions"
+                    aria-activedescendant={
+                      showContractSuggestions
+                        ? `contract-option-${activeContractSuggestion}`
+                        : undefined
+                    }
                     autoComplete="off"
                     className={inputClass}
                     placeholder="Escribe para buscar o ingresar un contrato"
                     value={filters.contract}
                     onFocus={() => setShowContractSuggestions(true)}
                     onBlur={() => setShowContractSuggestions(false)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Escape") setShowContractSuggestions(false);
-                    }}
+                    onKeyDown={handleContractKeyDown}
                     onChange={(event) =>
                       handleFilterChange("contract", event.target.value)
                     }
@@ -574,18 +621,29 @@ export function GenerationPage() {
                     <ul
                       id="contract-suggestions"
                       role="listbox"
-                      className="absolute z-30 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+                      className="mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-sm"
                     >
                       {contracts.isPending ? (
                         <li className="px-3 py-2 text-xs text-slate-500">
                           Buscando contratos…
                         </li>
                       ) : contracts.data?.length ? (
-                        contracts.data.slice(0, 12).map((item) => (
-                          <li key={item.value} role="option" aria-selected={filters.contract === item.value}>
+                        contracts.data.slice(0, 12).map((item, index) => (
+                          <li
+                            key={item.value}
+                            id={`contract-option-${index}`}
+                            role="option"
+                            aria-selected={activeContractSuggestion === index}
+                          >
                             <button
                               type="button"
-                              className="w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100"
+                              className={
+                                "w-full px-3 py-2 text-left text-sm " +
+                                (activeContractSuggestion === index
+                                  ? "bg-blue-50 text-blue-800"
+                                  : "text-slate-700 hover:bg-slate-100")
+                              }
+                              onMouseEnter={() => setActiveContractSuggestion(index)}
                               onMouseDown={(event) => event.preventDefault()}
                               onClick={() => {
                                 handleFilterChange("contract", item.value);
@@ -622,6 +680,11 @@ export function GenerationPage() {
                     aria-autocomplete="list"
                     aria-expanded={showProviderSuggestions}
                     aria-controls="provider-suggestions"
+                    aria-activedescendant={
+                      showProviderSuggestions
+                        ? `provider-option-${activeProviderSuggestion}`
+                        : undefined
+                    }
                     autoComplete="off"
                     inputMode="numeric"
                     className={inputClass}
@@ -629,9 +692,7 @@ export function GenerationPage() {
                     value={filters.provider_nit}
                     onFocus={() => setShowProviderSuggestions(true)}
                     onBlur={() => setShowProviderSuggestions(false)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Escape") setShowProviderSuggestions(false);
-                    }}
+                    onKeyDown={handleProviderKeyDown}
                     onChange={(event) =>
                       handleFilterChange("provider_nit", event.target.value)
                     }
@@ -640,18 +701,29 @@ export function GenerationPage() {
                     <ul
                       id="provider-suggestions"
                       role="listbox"
-                      className="absolute z-30 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+                      className="mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-sm"
                     >
                       {providers.isPending ? (
                         <li className="px-3 py-2 text-xs text-slate-500">
                           Buscando prestadores…
                         </li>
                       ) : providers.data?.length ? (
-                        providers.data.slice(0, 12).map((item) => (
-                          <li key={item.value} role="option" aria-selected={filters.provider_nit === item.value}>
+                        providers.data.slice(0, 12).map((item, index) => (
+                          <li
+                            key={item.value}
+                            id={`provider-option-${index}`}
+                            role="option"
+                            aria-selected={activeProviderSuggestion === index}
+                          >
                             <button
                               type="button"
-                              className="w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100"
+                              className={
+                                "w-full px-3 py-2 text-left text-sm " +
+                                (activeProviderSuggestion === index
+                                  ? "bg-blue-50 text-blue-800"
+                                  : "text-slate-700 hover:bg-slate-100")
+                              }
+                              onMouseEnter={() => setActiveProviderSuggestion(index)}
                               onMouseDown={(event) => event.preventDefault()}
                               onClick={() => {
                                 handleFilterChange("provider_nit", item.value);
@@ -924,9 +996,21 @@ export function GenerationPage() {
                 Transacciones activas que coinciden con los filtros originales de búsqueda.
               </p>
             </div>
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-              {selectedTransactionIds.length} transacciones seleccionadas
-            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                {selectedTransactionIds.length} transacciones seleccionadas
+              </span>
+              <button
+                type="button"
+                disabled={!allTransactionRows.length || transactions.isPending}
+                onClick={() => toggleAllTransactions(!allTransactionsSelected)}
+                className="rounded-lg border border-blue-200 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {allTransactionsSelected
+                  ? "Quitar selección global"
+                  : "Seleccionar todas las transacciones"}
+              </button>
+            </div>
           </div>
 
           {selectedTransactionIds.length >= MAX_SELECTED_TRANSACTIONS && (
