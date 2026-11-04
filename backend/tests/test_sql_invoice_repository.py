@@ -72,10 +72,7 @@ def test_fixed_cost_exclusion_uses_nit_contract_and_full_invoice_key():
 def test_invoice_status_rule_only_requires_nonzero_amount_for_provider_response():
     repository = SqlServerInvoiceRepository("FechaFactura", date(2026, 9, 1))
     where, params = repository._where()
-    status_clause = where.split(" AND ")[4]
-
-    assert "EstadoFacturarad" in status_clause
-    assert "= ? OR" in status_clause
-    assert "ValorPagarrad IS NOT NULL" in status_clause
-    assert "TRY_CONVERT(decimal(38, 4), A.ValorPagarrad) <> 0" in status_clause
+    assert "LTRIM(RTRIM(CONVERT(nvarchar(100), A.EstadoFacturarad))) = ? OR (" in where
+    assert "ValorPagarrad IS NOT NULL" in where
+    assert "TRY_CONVERT(decimal(38, 4), A.ValorPagarrad) <> 0" in where
     assert params[:3] == (date(2026, 9, 1), "Finalizada", "Para respuesta prestador")
