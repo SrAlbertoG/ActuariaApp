@@ -21,6 +21,10 @@ class ExtractionPreparationService:
         self,
         invoice_ids: list[str],
         transaction_ids: list[str],
+        *,
+        contract: str | None = None,
+        provider_nit: str | None = None,
+        invoice: str | None = None,
     ) -> ExtractionPreparationRead:
         """Valida la selección contra los registros activos de SQL Server."""
         # Se eliminan duplicados conservando el orden recibido desde la interfaz.
@@ -39,10 +43,10 @@ class ExtractionPreparationService:
                 "Selecciona al menos una transacción.",
                 400,
             )
-        if len(unique_invoice_ids) > 250:
+        if len(unique_invoice_ids) > 1000:
             raise AppError(
                 "too_many_invoices",
-                "Selecciona máximo 250 facturas por preparación.",
+                "Selecciona máximo 1000 facturas por preparación.",
                 400,
             )
         if len(unique_transaction_ids) > 1000:
@@ -58,10 +62,20 @@ class ExtractionPreparationService:
         ]
 
         with self.auth_service.connection() as connection:
+            active_filters = {
+                key: value
+                for key, value in {
+                    "contract": contract,
+                    "provider_nit": provider_nit,
+                    "invoice": invoice,
+                }.items()
+                if value and value.strip()
+            }
             records = self.transaction_repository.validate_selection(
                 connection,
                 invoice_keys,
                 unique_transaction_ids,
+                **active_filters,
             )
 
         found_ids = {
