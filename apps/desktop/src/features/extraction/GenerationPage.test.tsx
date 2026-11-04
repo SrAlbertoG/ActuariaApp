@@ -74,9 +74,9 @@ function mockApi() {
           providers: ["900123456"],
         });
       }
-      if (url.includes("/transactions/search")) return json(transactionPage);
+      if (url.includes("/transactions/dataset")) return json({ items: transactionPage.items, total: transactionPage.total });
       if (url.includes("/invoices/")) return json(invoicePage.items[0]);
-      if (url.includes("/invoices")) return json(invoicePage);
+      if (url.includes("/invoices/dataset")) return json({ items: invoicePage.items, total: invoicePage.total, warnings: [] });
       return json({});
     }),
   );
@@ -179,32 +179,13 @@ describe("filtros y selección global", () => {
 
         if (url.includes("/contracts")) return json([]);
         if (url.includes("/providers")) return json([]);
-        if (url.includes("/transactions/search")) {
-          return json({
-            items: transactions,
-            total: transactions.length,
-            page: 1,
-            page_size: 100,
-          });
+        if (url.includes("/transactions/dataset")) {
+          return json({ items: transactions, total: transactions.length });
         }
-        if (url.includes("/invoices") && url.includes("page_size=100")) {
-          return json({
-            items: invoices,
-            total: invoices.length,
-            page: 1,
-            page_size: 100,
-            warnings: [],
-          });
+        if (url.includes("/invoices/dataset")) {
+          return json({ items: invoices, total: invoices.length, warnings: [] });
         }
-        if (url.includes("/invoices")) {
-          return json({
-            items: invoices.slice(0, 25),
-            total: invoices.length,
-            page: 1,
-            page_size: 25,
-            warnings: [],
-          });
-        }
+
         return json({});
       }),
     );
