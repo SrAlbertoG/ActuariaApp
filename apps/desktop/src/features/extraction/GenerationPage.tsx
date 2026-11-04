@@ -219,7 +219,6 @@ export function GenerationPage() {
   const [hasSearched, setHasSearched] = useState(false);
   const [filterError, setFilterError] = useState<string | null>(null);
   const [selectionError, setSelectionError] = useState<string | null>(null);
-  const [isSelectingAllInvoices, setIsSelectingAllInvoices] = useState(false);
   const [showContractSuggestions, setShowContractSuggestions] = useState(false);
   const [showProviderSuggestions, setShowProviderSuggestions] = useState(false);
   const [activeContractSuggestion, setActiveContractSuggestion] = useState(0);
@@ -275,10 +274,12 @@ export function GenerationPage() {
     );
   }, [providers.data, filters.provider_nit]);
 
+  // Se descarga una sola vez el conjunto acotado; la paginación es local.
   const invoices = useQuery({
-    queryKey: ["invoices", appliedFilters, invoicePage],
-    queryFn: () => extractionApi.searchInvoices(appliedFilters, invoicePage),
+    queryKey: ["invoice-dataset", appliedFilters],
+    queryFn: () => extractionApi.searchInvoiceDataset(appliedFilters),
     enabled: hasSearched,
+    staleTime: 60 * 1000,
   });
 
   const selectedInvoiceIds = useMemo(
@@ -293,7 +294,11 @@ export function GenerationPage() {
     enabled: selectedInvoiceIds.length > 0,
   });
 
-  const invoiceRows = invoices.data?.items ?? [];
+  const allInvoiceRows = invoices.data?.items ?? [];
+  const invoiceRows = allInvoiceRows.slice(
+    (invoicePage - 1) * PAGE_SIZE,
+    invoicePage * PAGE_SIZE,
+  );
   const allTransactionRows = transactions.data?.items ?? [];
   const transactionRows = allTransactionRows.slice(
     (transactionPage - 1) * PAGE_SIZE,
@@ -492,25 +497,19 @@ export function GenerationPage() {
       return;
     }
 
-    setIsSelectingAllInvoices(true);
-    try {
-      const all = await extractionApi.searchAllInvoices(appliedFilters);
-      setSelectedInvoices(
-        Object.fromEntries(all.map((invoice) => [invoice.id, invoice])),
-      );
-      setSelectedTransactions({});
-      setTransactionPage(1);
-      setPrepared(null);
-      preparation.reset();
-    } catch (error) {
-      setSelectionError(
-        error instanceof Error
-          ? error.message
-          : "No fue posible seleccionar todas las facturas.",
-      );
-    } finally {
-      setIsSelectingAllInvoices(false);
+    // El conjunto completo ya está en memoria: reflejar la selección en el
+    // checkbox inmediatamente, sin esperar ninguna consulta de transacciones.
+    if (allInvoiceRows.length > MAX_SELECTED_INVOICES) {
+      setSelectionError("La selección supera el máximo de 1.000 facturas.");
+      return;
     }
+    setSelectedInvoices(
+      Object.fromEntries(allInvoiceRows.map((invoice) => [invoice.id, invoice])),
+    );
+    setSelectedTransactions({});
+    setTransactionPage(1);
+    setPrepared(null);
+    preparation.reset();
   };
 
   const toggleTransaction = (
@@ -894,15 +893,13 @@ export function GenerationPage() {
               </span>
               <button
                 type="button"
-                disabled={!invoices.data?.total || isSelectingAllInvoices}
+                disabled={!invoices.data?.total}
                 onClick={() => void toggleAllInvoices(!allInvoicesSelected)}
                 className="rounded-lg border border-blue-200 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {isSelectingAllInvoices
-                  ? "Seleccionando…"
-                  : allInvoicesSelected
-                    ? "Quitar selección global"
-                    : "Seleccionar todas"}
+{allInvoicesSelected
+                  ? "Quitar selección global"
+                  : "Seleccionar todas"}
               </button>
             </div>
           </div>
@@ -938,7 +935,6 @@ export function GenerationPage() {
                           type="checkbox"
                           aria-label="Seleccionar todas las facturas encontradas"
                           checked={allInvoicesSelected}
-                          disabled={isSelectingAllInvoices}
                           onChange={(event) =>
                             void toggleAllInvoices(event.target.checked)
                           }
