@@ -24,12 +24,16 @@ def test_invoice_filters_are_parameterized():
     assert "A.NumeroFactura LIKE ?" in where
     assert params == (
         date(2026, 9, 1),
+        "Finalizada",
+        "Para respuesta prestador",
         "CNT-2026-9",
         "900123456",
         "%FE001' OR 1=1 --%",
         date(2026, 9, 1),
         date(2026, 9, 30),
     )
+    assert "A.ValorPagarrad IS NOT NULL" in where
+    assert "TRY_CONVERT(decimal(38, 4), A.ValorPagarrad) <> 0" in where
 
 
 def test_invoice_repository_only_accepts_whitelisted_period_fields():
@@ -47,4 +51,20 @@ def test_invoice_detail_uses_exact_invoice_match():
 
     assert "A.NumeroFactura = ?" in where
     assert "LIKE" not in where
-    assert params == (date(2026, 9, 1), "FE001")
+    assert params == (
+        date(2026, 9, 1),
+        "Finalizada",
+        "Para respuesta prestador",
+        "FE001",
+    )
+
+
+def test_fixed_cost_exclusion_uses_nit_contract_and_full_invoice_key():
+    repository = SqlServerInvoiceRepository("FechaFactura", date(2026, 9, 1))
+    clause = repository._fixed_cost_exclusion_clause()
+
+    assert "NOT EXISTS" in clause
+    assert "FC.nit_provider" in clause
+    assert "FC.contract" in clause
+    assert "FC.invoice" in clause
+    assert "A.NumeroFactura" in clause
