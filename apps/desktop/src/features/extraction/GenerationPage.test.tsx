@@ -4,6 +4,7 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { GenerationPage } from "./GenerationPage";
+import { ThemeProvider } from "../theme/ThemeProvider";
 
 const invoicePage = {
   items: [
@@ -88,11 +89,13 @@ describe("GenerationPage", () => {
     mockApi();
 
     render(
-      <QueryClientProvider client={new QueryClient()}>
-        <MemoryRouter>
-          <GenerationPage />
-        </MemoryRouter>
-      </QueryClientProvider>,
+      <ThemeProvider>
+        <QueryClientProvider client={new QueryClient()}>
+          <MemoryRouter>
+            <GenerationPage />
+          </MemoryRouter>
+        </QueryClientProvider>
+      </ThemeProvider>,
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Buscar facturas" }));
