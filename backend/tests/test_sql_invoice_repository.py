@@ -33,7 +33,7 @@ def test_invoice_filters_are_parameterized():
         date(2026, 9, 30),
     )
     assert "A.ValorPagar IS NOT NULL" in where
-    assert "TRY_CONVERT(decimal(38, 4), A.ValorPagarrad) <> 0" in where
+    assert "TRY_CONVERT(decimal(38, 4), A.ValorPagar) <> 0" in where
 
 
 def test_invoice_repository_only_accepts_whitelisted_period_fields():
@@ -73,6 +73,6 @@ def test_invoice_status_rule_only_requires_nonzero_amount_for_provider_response(
     repository = SqlServerInvoiceRepository("FechaFactura", date(2026, 9, 1))
     where, params = repository._where()
     assert "LTRIM(RTRIM(CONVERT(nvarchar(100), A.NombreEstadoFactura))) = ? OR (" in where
-    assert "ValorPagarrad IS NOT NULL" in where
-    assert "TRY_CONVERT(decimal(38, 4), A.ValorPagarrad) <> 0" in where
+    assert "ValorPagar IS NOT NULL" in where
+    assert "TRY_CONVERT(decimal(38, 4), A.ValorPagar) <> 0" in where
     assert params[:3] == (date(2026, 9, 1), "Finalizada", "Para respuesta prestador")

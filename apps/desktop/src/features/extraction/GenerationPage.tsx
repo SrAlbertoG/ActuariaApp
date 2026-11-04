@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent, type KeyboardEvent } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
+import { StartExtractionButton } from "./StartExtractionButton";
 
 import { extractionApi, PAGE_SIZE } from "./extractionApi";
 import { ThemeToggle } from "../theme/ThemeToggle";
@@ -1222,17 +1223,8 @@ export function GenerationPage() {
                 <p>{prepared.providers.length ? prepared.providers.join(", ") : "No disponible"}</p>
               </div>
             </div>
-            <p className="mt-3 text-xs text-slate-500">
-              La selección fue validada por FastAPI. La ejecución y exportación
-              se desarrollarán en el entregable 3.
-            </p>
-            <button
-              type="button"
-              onClick={() => setPrepared(null)}
-              className="mt-3 text-sm font-medium text-slate-500 hover:text-slate-800"
-            >
-              Ocultar resumen
-            </button>
+            <StartExtractionButton prepared={prepared} filters={appliedFilters}/>
+            <button type="button" onClick={()=>setPrepared(null)}className="ml-3 mt-3 text-sm font-medium text-slate-500 hover:text-slate-800">Ocultar resumen</button>
           </section>
         )}
       </main>

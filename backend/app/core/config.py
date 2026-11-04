@@ -61,6 +61,14 @@ class Settings(BaseSettings):
     # a FechaRadicacion mediante ACTUARIA_FPR_PERIOD_FIELD.
     fpr_period_field: Literal["FechaFactura", "FechaRadicacion"] = "FechaFactura"
 
+    #Resultados detallados de extracciones
+    results_retention_days : int = 30
+    extraction_chunk_size : int = 500
+
+    @property
+    def database_path(self) -> Path:
+        return self.data_dir / "actuaria.sqlite"
+
     @property
     def logs_dir(self) -> Path:
         return self.data_dir / "logs"

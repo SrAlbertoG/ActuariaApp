@@ -35,7 +35,6 @@ class CredentialStore:
                 "password": params.password,
             }
         )
-        print(payload)
         try:
             keyring.set_password(SERVICE_NAME, ENTRY_NAME, payload)
         except KeyringError:
