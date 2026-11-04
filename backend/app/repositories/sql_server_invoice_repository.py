@@ -2,9 +2,14 @@
 
 from datetime import date
 
+import logging
+
 import pyodbc
 
 from app.core.errors import AppError
+
+
+logger = logging.getLogger(__name__)
 
 
 class SqlServerInvoiceRepository:
@@ -32,6 +37,8 @@ class SqlServerInvoiceRepository:
             columns = [column[0] for column in cursor.description]
             return [dict(zip(columns, row)) for row in cursor.fetchall()]
         except pyodbc.Error:
+            # Conserva el detalle técnico en el log del backend sin exponerlo al cliente.
+            logger.exception("Error SQL Server al consultar facturas FPR.")
             raise AppError(
                 "invoice_query_failed",
                 "No fue posible consultar las facturas en SQL Server. Verifica los permisos de lectura.",
@@ -76,6 +83,10 @@ class SqlServerInvoiceRepository:
             columns = [column[0] for column in cursor.description]
             return [dict(zip(columns, row)) for row in cursor.fetchall()]
         except pyodbc.Error:
+            # Este bloque también cubre CREATE/INSERT/SELECT sobre la tabla temporal.
+            logger.exception(
+                "Error SQL Server al consultar facturas FPR con exclusión de Base Montos Fijos."
+            )
             raise AppError(
                 "invoice_query_failed",
                 "No fue posible consultar las facturas en SQL Server. Verifica los permisos de lectura.",
