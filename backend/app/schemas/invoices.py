@@ -72,6 +72,15 @@ class TransactionSearchRequest(BaseModel):
 
 
 
+class TransactionDatasetRequest(BaseModel):
+    """Solicitud acotada para recuperar todas las transacciones de una selección."""
+
+    invoice_ids: list[str] = Field(min_length=1, max_length=1000)
+    contract: str | None = Field(default=None, max_length=100)
+    provider_nit: str | None = Field(default=None, max_length=50)
+    invoice: str | None = Field(default=None, max_length=100)
+
+
 class ExtractionPreparationRequest(BaseModel):
     """Facturas y transacciones que el analista desea dejar preparadas."""
 
