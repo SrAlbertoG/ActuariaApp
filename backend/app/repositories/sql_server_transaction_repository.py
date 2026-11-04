@@ -36,8 +36,8 @@ class SqlServerTransactionRepository:
         # únicamente los criterios que el analista utilizó en la búsqueda de
         # facturas, para evitar asociar transacciones de otro NIT o contrato.
         invoice_numbers = list(dict.fromkeys(item["invoice"] for item in invoice_keys))
-        expressions = ["rat_NumeroFactura = ?" for _ in invoice_numbers]
-        clauses = ["(" + " OR ".join(expressions) + ")"]
+        placeholders = ", ".join("?" for _ in invoice_numbers)
+        clauses = [f"rat_NumeroFactura IN ({placeholders})"]
         params: list[object] = list(invoice_numbers)
 
         if contract and contract.strip():
