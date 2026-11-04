@@ -37,7 +37,7 @@ def test_build_filter_deduplicates_invoice_numbers():
 
     where, params = SqlServerTransactionRepository._build_filter(keys)
 
-    assert where == "(rat_NumeroFactura = ?)"
+    assert where == "rat_NumeroFactura IN (?)"
     assert params == ("FE001",)
 
 
