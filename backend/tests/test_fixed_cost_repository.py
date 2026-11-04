@@ -46,6 +46,11 @@ def test_fixed_cost_repository_normalizes_invoice_and_filters_month(tmp_path: Pa
     assert records[0]["invoice"] == "FE001"
     assert str(records[0]["billed_amount"]) == "1250000"
     assert repository.count(contract="CNT-2026-9") == 2
+    assert repository.invoice_keys() == {
+        ("900123456", "CNT-2026-9", "FE001"),
+        ("900123456", "CNT-2026-9", "FE002"),
+    }
+    assert repository.contains_invoice("FE001", "900123456", "CNT-2026-9")
     assert repository.find_one("FE001", "900123456", "CNT-2026-9")["invoice"] == "FE001"
     assert repository.find_one("FE00", "900123456", "CNT-2026-9") is None
     assert str(
