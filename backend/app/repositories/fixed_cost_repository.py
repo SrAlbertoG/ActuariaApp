@@ -191,10 +191,12 @@ class FixedCostRepository:
         return _read_cached_file(str(self.file_path.resolve()), modified_ns).copy()
 
     def invoice_keys(self) -> set[tuple[str, str, str]]:
-        """Devuelve las claves naturales de facturas incluidas en Montos Fijos.
+        """Devuelve claves naturales completas para deduplicación.
 
-        La tupla se ordena como (NIT, contrato, número de factura), igual que
-        la clave que se utiliza para identificar una factura en la interfaz.
+        Incluye filas sin MesdeServicio válido, ya que la presencia de la
+        factura en el Excel debe bloquear un duplicado FPR aunque esa fila no
+        pueda presentarse como factura histórica.
+        La tupla se ordena como (NIT, contrato, factura completa).
         """
         frame = self._load()
         return set(
