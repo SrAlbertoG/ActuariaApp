@@ -135,14 +135,14 @@ class SqlServerInvoiceRepository:
         ]
         params: list[object] = [self.cutoff_date]
         status_expression = (
-            "LTRIM(RTRIM(CONVERT(nvarchar(100), A.EstadoFacturarad)))"
+            "LTRIM(RTRIM(CONVERT(nvarchar(100), A.NombreEstadoFactura)))"
         )
         clauses.append(
             f"({status_expression} = ? OR "
             f"({status_expression} = ? "
-            "AND A.ValorPagarrad IS NOT NULL "
-            "AND TRY_CONVERT(decimal(38, 4), A.ValorPagarrad) IS NOT NULL "
-            "AND TRY_CONVERT(decimal(38, 4), A.ValorPagarrad) <> 0))"
+            "AND A.ValorPagar IS NOT NULL "
+            "AND TRY_CONVERT(decimal(38, 4), A.ValorPagar) IS NOT NULL "
+            "AND TRY_CONVERT(decimal(38, 4), A.ValorPagar) <> 0))"
         )
         params.extend(["Finalizada", "Para respuesta prestador"])
 
