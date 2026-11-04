@@ -247,8 +247,10 @@ export function GenerationPage() {
   });
 
   const providers = useQuery({
-    queryKey: ["invoice-providers"],
-    queryFn: () => extractionApi.getProviders(),
+    queryKey: ["invoice-providers", filters.contract],
+    // Se consulta al entrar y cuando cambia el contrato, nunca por cada letra
+    // del NIT. Así se conserva el filtro de prestadores asociado al contrato.
+    queryFn: () => extractionApi.getProviders(filters.contract.trim() || undefined),
     staleTime: 5 * 60 * 1000,
     refetchOnMount: true,
     refetchOnWindowFocus: false,
@@ -267,20 +269,12 @@ export function GenerationPage() {
 
   const providerOptions = useMemo(() => {
     const search = filters.provider_nit.trim().toLocaleLowerCase("es");
-    const contract = filters.contract.trim().toLocaleLowerCase("es");
-    return (providers.data ?? []).filter((item) => {
-      const matchesContract =
-        !contract ||
-        (item as typeof item & { contracts?: string[] }).contracts?.some(
-          (value) => value.trim().toLocaleLowerCase("es") === contract,
-        ) !== false;
-      const matchesSearch =
-        !search ||
-        item.value.toLocaleLowerCase("es").includes(search) ||
-        item.label.toLocaleLowerCase("es").includes(search);
-      return matchesContract && matchesSearch;
-    });
-  }, [providers.data, filters.contract, filters.provider_nit]);
+    return (providers.data ?? []).filter((item) =>
+      !search ||
+      item.value.toLocaleLowerCase("es").includes(search) ||
+      item.label.toLocaleLowerCase("es").includes(search),
+    );
+  }, [providers.data, filters.provider_nit]);
 
   const invoices = useQuery({
     queryKey: ["invoices", appliedFilters, invoicePage],
