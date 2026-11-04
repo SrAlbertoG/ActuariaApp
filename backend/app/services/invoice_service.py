@@ -221,3 +221,34 @@ class InvoiceService:
             billed_amount=record.get("billed_amount"),
             source=record["source"],
         )
+
+
+    def search_dataset(
+        self,
+        *,
+        contract: str | None = None,
+        provider_nit: str | None = None,
+        invoice: str | None = None,
+        start_date: date | None = None,
+        end_date: date | None = None,
+        max_records: int = 1000,
+    ):
+        """Obtiene el conjunto completo acotado para paginación local en la UI."""
+        # Se solicita un registro adicional para detectar exceso sin descargar
+        # volúmenes arbitrarios al equipo del analista.
+        result = self.search(
+            contract=contract,
+            provider_nit=provider_nit,
+            invoice=invoice,
+            start_date=start_date,
+            end_date=end_date,
+            page=1,
+            page_size=max_records + 1,
+        )
+        if result.total > max_records:
+            raise AppError(
+                "invoice_result_limit_exceeded",
+                f"La búsqueda encontró {result.total} facturas. Ajusta los filtros para obtener máximo {max_records} registros y habilitar la paginación local.",
+                413,
+            )
+        return result
