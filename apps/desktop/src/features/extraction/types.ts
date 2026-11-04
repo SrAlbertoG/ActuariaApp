@@ -20,6 +20,12 @@ export interface Invoice {
   source: InvoiceSource;
 }
 
+export interface InvoiceDataset {
+  items: Invoice[];
+  total: number;
+  warnings: string[];
+}
+
 export interface InvoicePage {
   items: Invoice[];
   total: number;
@@ -36,6 +42,11 @@ export interface Transaction {
   provider_code: string | null;
   rips_date: string | null;
   filing_date: string | null;
+}
+
+export interface TransactionDataset {
+  items: Transaction[];
+  total: number;
 }
 
 export interface TransactionPage {
