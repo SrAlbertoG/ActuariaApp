@@ -312,6 +312,7 @@ class FixedCostRepository:
 
     def list_contracts(self, search: str | None = None) -> list[str]:
         frame = self._load()
+        frame = frame.loc[frame["service_month"].notna()]
         values = frame["contract"].dropna().unique().tolist()
         if search:
             needle = search.strip().casefold()
@@ -320,6 +321,7 @@ class FixedCostRepository:
 
     def list_providers(self, contract: str | None = None) -> list[str]:
         frame = self._load()
+        frame = frame.loc[frame["service_month"].notna()]
         if contract:
             frame = frame.loc[frame["contract"] == contract.strip()]
         return sorted(frame["nit_provider"].dropna().unique().tolist(), key=str.casefold)
