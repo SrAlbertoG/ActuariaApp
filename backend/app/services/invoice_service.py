@@ -77,7 +77,8 @@ class InvoiceService:
         }
 
         try:
-            fixed_invoice_keys = self.fixed_repository.invoice_keys()
+            if hasattr(self.fixed_repository, "invoice_keys"):
+                fixed_invoice_keys = self.fixed_repository.invoice_keys()
         except AppError as exc:
             if exc.code != "fixed_cost_file_missing":
                 raise
