@@ -507,10 +507,10 @@ no es válido; esas filas no se exponen como facturas históricas, pero siguen
 participando en el bloqueo de duplicados. No se debe deduplicar solo por número
 de factura, porque puede repetirse entre prestadores o contratos.
 
-Si no se encuentra el archivo, la API devuelve una advertencia, omite
-los periodos históricos y no ejecuta la consulta de facturas FPR. Esta política
-de fallo seguro evita exponer registros SQL cuya ausencia de duplicados no se
-pueda comprobar contra el Excel.
+Si el archivo falta o no puede leerse, el servicio devuelve cero facturas y una
+advertencia: omite tanto el origen histórico como la consulta FPR. El detalle FPR
+queda bloqueado. Esta política evita exponer registros cuya ausencia de
+duplicados no se pueda comprobar contra el Excel.
 
 ### Filtros de transacciones
 
@@ -527,15 +527,19 @@ en la selección que mantiene React.
 
 ### Interfaz
 
-- Los campos de contrato y NIT son inputs de texto libre con sugerencias
-  remotas que se filtran mientras el analista escribe.
-- Seleccionar todas las facturas recupera todas las páginas del conjunto
-  actual, hasta un máximo de 1.000.
-- La consulta de transacciones carga todas las coincidencias hasta un máximo
-  de 1.000; se preseleccionan todas las filas elegibles y la paginación se
-  realiza en el cliente para conservar la selección al cambiar de página.
-- Si el resultado supera el máximo, se informa y se exige refinar filtros; no
-  se presenta una selección parcial como completa.
+- Contrato y NIT son campos de texto libre con sugerencias remotas debajo del
+  campo; no se usan selects nativos. Se conserva el texto aunque no se elija
+  una opción del catálogo.
+- Las sugerencias se manejan con teclado (flechas arriba/abajo, Enter y Escape).
+- La selección global de facturas recupera todas las páginas del resultado
+  actual y no se limita a la página visible.
+- La selección global de transacciones agrega o quita el conjunto completo
+  cargado por la búsqueda, no solo el segmento local visible de la paginación.
+- Todas las transacciones coincidentes se preseleccionan automáticamente. La
+  selección manual se conserva entre páginas y el analista puede desmarcar
+  registros o utilizar la acción global para limpiar la tabla completa.
+- Ambos tipos de selección respetan el máximo de 1.000 registros; si se supera,
+  se informa y se exige refinar los filtros en lugar de truncar silenciosamente.
 - El tema claro/oscuro es global, se aplica mediante una clase raíz y se
   persiste en el almacenamiento local del frontend.
 
