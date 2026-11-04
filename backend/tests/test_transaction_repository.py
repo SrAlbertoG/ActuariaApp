@@ -104,3 +104,39 @@ def test_build_filter_combines_contract_provider_and_invoice_filters():
     assert "rat_NumeroIdentificacion" in where
     assert "rat_NumeroFactura LIKE ?" in where
     assert params == ("FE001", "CNT-2026-9", "900123456", "%FE00%")
+
+def test_validate_selection_reapplies_only_original_search_filters():
+    from app.repositories.sql_server_transaction_repository import SqlServerTransactionRepository
+
+    class Cursor:
+        description = [("id",), ("invoice",), ("contract",), ("nit_provider",)]
+        query = ""
+        params = ()
+        def execute(self, query, params):
+            self.query = query
+            self.params = params
+        def fetchall(self):
+            return [("501", "FE001", "CNT-1", "900123456")]
+        def close(self):
+            pass
+
+    class Connection:
+        def __init__(self):
+            self.cursor_instance = Cursor()
+        def cursor(self):
+            return self.cursor_instance
+
+    connection = Connection()
+    repository = SqlServerTransactionRepository()
+    repository.validate_selection(
+        connection,
+        [{"invoice": "FE001", "nit_provider": "900123456", "contract": "CNT-1"}],
+        ["501"],
+        provider_nit="900123456",
+    )
+
+    query = connection.cursor_instance.query
+    params = connection.cursor_instance.params
+    assert "rat_NumeroIdentificacion" in query
+    assert "rat_NumeroContrato" not in query
+    assert params == ("FE001", "900123456", "501")
