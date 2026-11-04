@@ -486,7 +486,7 @@ export function GenerationPage() {
     preparation.reset();
   };
 
-  const toggleAllInvoices = async (checked: boolean) => {
+  const toggleAllInvoices = (checked: boolean) => {
     setSelectionError(null);
     if (!checked) {
       setSelectedInvoices({});
