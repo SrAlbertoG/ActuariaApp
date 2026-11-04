@@ -386,14 +386,23 @@ export function GenerationPage() {
       const invoiceStillSelected = Object.values(selectedInvoices).some(
         (selectedInvoice) =>
           selectedInvoice.id !== invoice.id &&
-          selectedInvoice.invoice === invoice.invoice,
+          selectedInvoice.invoice === invoice.invoice &&
+          selectedInvoice.nit_provider === invoice.nit_provider &&
+          selectedInvoice.contract === invoice.contract,
       );
 
       if (!invoiceStillSelected) {
         setSelectedTransactions((current) => {
           const next = { ...current };
           Object.keys(next).forEach((id) => {
-            if (next[id].invoice === invoice.invoice) delete next[id];
+            const transaction = next[id];
+            if (
+              transaction.invoice === invoice.invoice &&
+              transaction.nit_provider === invoice.nit_provider &&
+              transaction.contract === invoice.contract
+            ) {
+              delete next[id];
+            }
           });
           return next;
         });
