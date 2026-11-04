@@ -563,7 +563,7 @@ export function GenerationPage() {
                     value={filters.contract}
                     onFocus={() => setShowContractSuggestions(true)}
                     onBlur={() => setShowContractSuggestions(false)}
-                    onKeyDown={(event) => {}
+                    onKeyDown={(event) => {
                       if (event.key === "Escape") setShowContractSuggestions(false);
                     }}
                     onChange={(event) =>
@@ -629,7 +629,7 @@ export function GenerationPage() {
                     value={filters.provider_nit}
                     onFocus={() => setShowProviderSuggestions(true)}
                     onBlur={() => setShowProviderSuggestions(false)}
-                    onKeyDown={(event) => {}
+                    onKeyDown={(event) => {
                       if (event.key === "Escape") setShowProviderSuggestions(false);
                     }}
                     onChange={(event) =>
