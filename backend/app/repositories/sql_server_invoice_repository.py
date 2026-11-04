@@ -66,10 +66,10 @@ class SqlServerInvoiceRepository:
                 CREATE TABLE #FixedCostInvoiceKeys (
                     nit_provider nvarchar(100) COLLATE DATABASE_DEFAULT NOT NULL,
                     contract nvarchar(100) COLLATE DATABASE_DEFAULT NOT NULL,
-                    invoice nvarchar(100) COLLATE DATABASE_DEFAULT NOT NULL,
-                    CONSTRAINT PK_FixedCostInvoiceKeys
-                        PRIMARY KEY CLUSTERED (nit_provider, contract, invoice)
+                    invoice nvarchar(100) COLLATE DATABASE_DEFAULT NOT NULL
                 )
+                CREATE NONCLUSTERED INDEX IX_FixedCostInvoiceKeys_NaturalKey
+                    ON #FixedCostInvoiceKeys (nit_provider, contract, invoice)
                 """
             )
             if excluded_keys:
