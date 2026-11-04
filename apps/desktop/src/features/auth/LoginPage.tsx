@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { config } from "../../lib/config";
+import { ThemeToggle } from "../theme/ThemeToggle";
 import type { AuthType } from "./types";
 import {
   useForgetCredentials,
@@ -58,7 +59,10 @@ function LoginForm({ session }: { session: SessionState }) {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-100 p-6">
+    <div className="relative flex min-h-screen items-center justify-center bg-slate-100 p-6">
+      <div className="fixed right-6 top-6 z-20">
+        <ThemeToggle />
+      </div>
       <form onSubmit={handleSubmit} className="w-full max-w-md space-y-4 rounded-lg bg-white p-8 shadow">
         <div>
           <h1 className="text-xl font-semibold text-slate-800">Plataforma de Actuaría</h1>
