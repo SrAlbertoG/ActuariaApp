@@ -53,11 +53,11 @@ de sesión y la dependencia de conexión SQL Server activa.
 | --- | --- | --- |
 | GET | /contracts | Catálogo de contratos |
 | GET | /providers | Catálogo de prestadores, con filtros opcionales |
-| GET | /invoices | Búsqueda de facturas con filtros y paginación |
+| GET | /invoices | Búsqueda paginada tradicional de facturas |\n| GET | /invoices/dataset | Recupera el conjunto completo acotado de facturas para paginación local |
 | GET | /invoices/{invoice_id} | Detalle de factura |
 | GET | /invoices/{invoice_id}/transactions | Transacciones de una factura |
 | GET | /transactions | Transacciones de una selección pequeña |
-| POST | /transactions/search | Consulta paginada de transacciones de una selección múltiple |
+| POST | /transactions/search | Consulta paginada tradicional de transacciones |\n| POST | /transactions/dataset | Recupera el conjunto completo acotado de transacciones para paginación local |
 | POST | /extraction/prepare | Valida y confirma la selección sin ejecutar extracción |
 
 Filtros de /invoices: contract, provider_nit, invoice, start_date,
@@ -67,12 +67,15 @@ El endpoint POST recibe JSON con invoice_ids, page y page_size, y admite
 contract, provider_nit e invoice para conservar los criterios no vacíos de la
 búsqueda original. Se usa para selecciones múltiples y evita colocar cientos de
 identificadores en la URL.
-La selección admite hasta 1.000 facturas y hasta 1.000 transacciones. La API
-devuelve páginas de hasta 100 registros. La interfaz recupera los resultados
-necesarios para aplicar la selección global entre páginas; la tabla de
-transacciones pagina localmente los resultados ya consultados. Si el resultado
-supera los máximos, la interfaz informa al analista y solicita reducir los
-filtros para evitar una selección parcial.
+La pantalla de generación utiliza los endpoints de dataset para realizar una
+consulta por búsqueda de facturas y una consulta por conjunto de facturas
+seleccionadas para transacciones. El backend devuelve todos los registros cuando
+el resultado no supera 1.000; React conserva ese conjunto en memoria y realiza
+la paginación de 25 filas localmente, sin ejecutar SQL al cambiar de página.
+Si una búsqueda supera 1.000 facturas o una selección supera 1.000 transacciones,
+el backend responde HTTP 413 con un mensaje que solicita refinar los filtros.
+Los endpoints paginados tradicionales se conservan para compatibilidad con otros
+consumidores.
 
 La búsqueda de transacciones siempre se limita a los números completos de las
 facturas seleccionadas y a `rat_Activo = 'Activo'`. Además, recibe únicamente
@@ -96,8 +99,8 @@ backend; los campos temporales se validan con una lista permitida.
 
 Para los registros provenientes de `BiPagosFPR`, la consulta solo incluye:
 
-1. `EstadoFacturarad = 'Finalizada'`.
-2. `EstadoFacturarad = 'Para respuesta prestador'` y `ValorPagarrad`
+1. `NombreEstadoFactura = 'Finalizada'`.
+2. `NombreEstadoFactura = 'Para respuesta prestador'` y `ValorPagar`
    convertido a un valor numérico distinto de cero.
 
 Por tanto, se excluyen los demás estados, los valores nulos de
@@ -199,3 +202,23 @@ npm run build
    Fijos.
 4. Probar con una copia autorizada del libro Excel y con un usuario SQL que
    tenga permisos de lectura sobre las tablas consultadas.
+
+
+## Optimización de rendimiento y paginación
+
+- La pantalla consume `GET /invoices/dataset` y `POST /transactions/dataset`.
+- Cada endpoint devuelve un conjunto completo de hasta 1.000 registros. La
+  paginación de 25 filas se realiza en memoria en React; cambiar de página no
+  vuelve a consultar SQL Server ni deja filas esperando una petición.
+- Se solicita internamente un registro adicional para detectar excedentes y
+  responder HTTP 413 antes de presentar una selección parcial.
+- El filtro de números de factura en RIPS usa `IN (?, ...)` parametrizado en
+  lugar de una cadena de predicados `OR`.
+- La tabla temporal de exclusión de Base Montos Fijos dispone de un índice
+  compuesto por NIT, contrato y factura para acelerar el anti-join `NOT EXISTS`.
+- No se crean índices permanentes en la base institucional desde la aplicación.
+  Se recomienda que el DBA evalúe índices sobre `BiPagosLiquidacion
+  (NumRadicadoBoxalud, FechaLiquidacion, IdLiquidacion) INCLUDE
+  (ValorInicioFactura)` y sobre los campos de filtro/orden de
+  `BiPagosFPR` y `RIPSArchivoTransaccion`, validando los planes de ejecución y
+  la carga de escritura antes de aplicarlos.
