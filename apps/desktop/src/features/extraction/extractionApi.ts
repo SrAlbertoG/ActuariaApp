@@ -5,7 +5,6 @@ import type {
   InvoiceFilters,
   InvoiceDataset,
   TransactionDataset,
-  TransactionPage,
   PreparedSelection,
 } from "./types";
 
