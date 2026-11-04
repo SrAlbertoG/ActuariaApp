@@ -181,7 +181,6 @@ class FixedCostRepository:
 
         return _read_cached_file(str(self.file_path.resolve()), modified_ns).copy()
 
-    @staticmethod
     def invoice_keys(self) -> set[tuple[str, str, str]]:
         """Devuelve las claves naturales de facturas incluidas en Montos Fijos.
 
