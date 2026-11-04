@@ -235,22 +235,52 @@ export function GenerationPage() {
   const [detailInvoiceId, setDetailInvoiceId] = useState<string | null>(null);
   const [prepared, setPrepared] = useState<PreparedSelection | null>(null);
 
+  // Los catálogos se consultan al entrar a la pantalla, no por cada tecla.
+  // React Query conserva la respuesta durante 5 minutos y la renueva al volver
+  // a entrar si ya venció ese tiempo.
   const contracts = useQuery({
-    queryKey: ["invoice-contracts", filters.contract],
-    queryFn: () => extractionApi.getContracts(filters.contract),
-    enabled: showContractSuggestions && filters.contract.trim().length > 0,
+    queryKey: ["invoice-contracts"],
+    queryFn: () => extractionApi.getContracts(),
+    staleTime: 5 * 60 * 1000,
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
   });
 
   const providers = useQuery({
-    queryKey: ["invoice-providers", filters.contract, filters.provider_nit],
-    queryFn: () =>
-      extractionApi.getProviders(
-        filters.contract.trim() || undefined,
-        filters.provider_nit,
-      ),
-    enabled:
-      showProviderSuggestions && filters.provider_nit.trim().length > 0,
+    queryKey: ["invoice-providers"],
+    queryFn: () => extractionApi.getProviders(),
+    staleTime: 5 * 60 * 1000,
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
   });
+
+  const contractOptions = useMemo(() => {
+    const search = filters.contract.trim().toLocaleLowerCase("es");
+    const items = contracts.data ?? [];
+    return search
+      ? items.filter((item) =>
+          item.value.toLocaleLowerCase("es").includes(search) ||
+          item.label.toLocaleLowerCase("es").includes(search),
+        )
+      : items;
+  }, [contracts.data, filters.contract]);
+
+  const providerOptions = useMemo(() => {
+    const search = filters.provider_nit.trim().toLocaleLowerCase("es");
+    const contract = filters.contract.trim().toLocaleLowerCase("es");
+    return (providers.data ?? []).filter((item) => {
+      const matchesContract =
+        !contract ||
+        (item as typeof item & { contracts?: string[] }).contracts?.some(
+          (value) => value.trim().toLocaleLowerCase("es") === contract,
+        ) !== false;
+      const matchesSearch =
+        !search ||
+        item.value.toLocaleLowerCase("es").includes(search) ||
+        item.label.toLocaleLowerCase("es").includes(search);
+      return matchesContract && matchesSearch;
+    });
+  }, [providers.data, filters.contract, filters.provider_nit]);
 
   const invoices = useQuery({
     queryKey: ["invoices", appliedFilters, invoicePage],
@@ -332,7 +362,7 @@ export function GenerationPage() {
   };
 
   const handleContractKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    const options = contracts.data?.slice(0, 12) ?? [];
+    const options = contractOptions.slice(0, 12);
     if (event.key === "Escape") {
       setShowContractSuggestions(false);
       return;
@@ -352,7 +382,7 @@ export function GenerationPage() {
   };
 
   const handleProviderKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    const options = providers.data?.slice(0, 12) ?? [];
+    const options = providerOptions.slice(0, 12);
     if (event.key === "Escape") {
       setShowProviderSuggestions(false);
       return;
@@ -575,14 +605,33 @@ export function GenerationPage() {
 
       <main className="mx-auto max-w-[1500px] space-y-5 px-6 py-6">
         <section>
-          <div className="mb-4">
-            <h2 className="text-base font-semibold text-slate-900">
-              Parámetros de búsqueda
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Filtra las facturas y selecciona las transacciones que participarán
-              en la extracción.
-            </p>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-base font-semibold text-slate-900">
+                Parámetros de búsqueda
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Filtra las facturas y selecciona las transacciones que participarán
+                en la extracción.
+              </p>
+              <p className="mt-1 text-xs text-slate-500" role="status">
+                {contracts.isPending || providers.isPending
+                  ? "Cargando catálogos de contratos y prestadores…"
+                  : contracts.isError || providers.isError
+                    ? "No se pudieron cargar todos los catálogos. Puedes intentar actualizarlos."
+                    : "Catálogos disponibles: " + (contracts.data?.length ?? 0) + " contratos y " + (providers.data?.length ?? 0) + " prestadores."}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void Promise.all([contracts.refetch(), providers.refetch()])}
+              disabled={contracts.isFetching || providers.isFetching}
+              className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-wait disabled:opacity-50"
+            >
+              {contracts.isFetching || providers.isFetching
+                ? "Actualizando catálogos…"
+                : "Actualizar catálogos"}
+            </button>
           </div>
 
           <form
@@ -623,12 +672,12 @@ export function GenerationPage() {
                       role="listbox"
                       className="mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-sm"
                     >
-                      {contracts.isPending ? (
+                      {contracts.isPending && !contracts.data ? (
                         <li className="px-3 py-2 text-xs text-slate-500">
-                          Buscando contratos…
+                          Cargando catálogo de contratos…
                         </li>
-                      ) : contracts.data?.length ? (
-                        contracts.data.slice(0, 12).map((item, index) => (
+                      ) : contractOptions.length ? (
+                        contractOptions.slice(0, 12).map((item, index) => (
                           <li
                             key={item.value}
                             id={`contract-option-${index}`}
@@ -703,12 +752,12 @@ export function GenerationPage() {
                       role="listbox"
                       className="mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-sm"
                     >
-                      {providers.isPending ? (
+                      {providers.isPending && !providers.data ? (
                         <li className="px-3 py-2 text-xs text-slate-500">
-                          Buscando prestadores…
+                          Cargando catálogo de prestadores…
                         </li>
-                      ) : providers.data?.length ? (
-                        providers.data.slice(0, 12).map((item, index) => (
+                      ) : providerOptions.length ? (
+                        providerOptions.slice(0, 12).map((item, index) => (
                           <li
                             key={item.value}
                             id={`provider-option-${index}`}
