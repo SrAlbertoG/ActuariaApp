@@ -993,3 +993,26 @@ La meta final será consolidar en un dashboard actuarial los costos por factura 
 - PyInstaller: https://pyinstaller.org/
 - Pytest: https://docs.pytest.org/
 
+
+
+## Ajuste técnico de rendimiento — Entregable 2
+
+Para evitar consultas SQL repetidas al navegar páginas, la pantalla de generación
+consume `GET /api/v1/invoices/dataset` y `POST /api/v1/transactions/dataset`.
+Cada respuesta contiene el conjunto completo hasta un máximo de 1.000 registros;
+React aplica paginación local de 25 filas. Los endpoints paginados originales se
+mantienen para compatibilidad. Los excesos responden HTTP 413 y no se truncan
+silenciosamente.
+
+La selección global de facturas usa los registros ya descargados y actualiza
+primero el estado visual de React. La consulta de transacciones se dispara como
+consecuencia del cambio de selección. En SQL Server, la exclusión temporal de
+Base Montos Fijos tiene un índice compuesto en (NIT, contrato, factura), y la
+búsqueda de transacciones usa un predicado IN parametrizado para el conjunto de
+números de factura.
+
+Los índices permanentes en tablas institucionales requieren revisión y aprobación
+del DBA mediante planes de ejecución. Candidatos para evaluar: BiPagosLiquidacion
+(NumRadicadoBoxalud, FechaLiquidacion, IdLiquidacion) INCLUDE (ValorInicioFactura),
+además de índices que cubran los filtros y ordenamientos de BiPagosFPR y
+RIPSArchivoTransaccion. No se deben crear automáticamente desde la aplicación.
